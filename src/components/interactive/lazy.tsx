@@ -71,7 +71,7 @@ function Pending({ name }: { name: string }): JSX.Element {
   return (
     <div
       data-pending-widget={name}
-      className="my-8 flex h-48 animate-pulse items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+      className="my-8 flex h-48 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
     >
       Loading the simulator…
     </div>

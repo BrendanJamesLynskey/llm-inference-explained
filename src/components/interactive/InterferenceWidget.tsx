@@ -22,7 +22,7 @@ const W = 560;
 const ROW = 70;
 
 /** The steady-state request whose worst colocated token gap is largest. */
-function worstRequest(res: SimResult): number {
+function worstRequest(res: Pick<SimResult, "reqs">): number {
   const done = res.reqs.filter((r) => r.finish !== null);
   const skip = Math.floor(done.length * 0.1);
   let best = 0;

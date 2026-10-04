@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { FORMATS, run, type Metrics } from "@/lib/disagg/engine";
+import { FORMATS, run, runPlain, type Metrics } from "@/lib/disagg/engine";
 import {
   DEFAULT_CONTROLS,
   PRESETS,
@@ -115,5 +115,16 @@ describe("controls → configurations", () => {
     const c = configs({ ...DEFAULT_CONTROLS, model: "llama3-8b", rate: 8 });
     const hh = byId.get("hetero-hh")!;
     expect(run(c.disagg, rows)).toEqual(run(hh.runs.run!, rows));
+  });
+});
+
+describe("runPlain (what the Web Worker posts back)", () => {
+  it("has the same metrics as run() and only plain request data", () => {
+    const rows = workload(4).rows;
+    const cfg = configs(DEFAULT_CONTROLS).disagg;
+    const p = runPlain(cfg, rows);
+    expect(p.metrics).toEqual(run(cfg, rows));
+    expect(p.result.reqs).toHaveLength(800);
+    expect(structuredClone(p)).toEqual(p);
   });
 });

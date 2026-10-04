@@ -132,7 +132,8 @@ The same stack as the Transformer Decoder Explainer, minus the backend:
 No database and no sign-in: every page is statically rendered, and each
 chapter's interactive is code-split so a chapter loads only its own widget.
 The simulator interactives (chapters 11, 13, 14) render in the browser only,
-loading the engine and the workload they need when the chapter opens.
+loading the engine and the workload they need when the chapter opens, and
+run the simulations in a Web Worker so the page stays responsive.
 
 ### Design system: where each piece came from
 
@@ -256,8 +257,8 @@ Each chapter lists the rest.
 PRs welcome. CI runs `format:check`, `lint`, `typecheck`, unit tests with
 coverage thresholds, `verify:maths`, e2e on a production build, and
 Lighthouse CI (performance, accessibility and best practices must each
-score at least 90 on `/`, `/learn`, `/learn/02-kv-cache` and
-`/learn/04-batching`).
+score at least 90 on `/`, `/learn`, `/learn/02-kv-cache`,
+`/learn/04-batching` and `/learn/13-live-simulator`).
 
 ## Licence
 

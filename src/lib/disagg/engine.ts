@@ -171,6 +171,30 @@ export function metricsOf(res: SimResult, s = engine.summarise(res)): Metrics {
   };
 }
 
+/** A run as plain data (safe to post from a worker): metrics and request stamps. */
+export type PlainRun = {
+  metrics: Metrics;
+  result: { reqs: SimRequest[] };
+};
+
+/** Run one configuration and keep only plain data. */
+export function runPlain(cfg: SimConfig, rows: Row[]): PlainRun {
+  const res = engine.simulate(cfg, rows);
+  const reqs = res.reqs.map((r) => ({
+    arrival: r.arrival,
+    prompt: r.prompt,
+    output: r.output,
+    prefillStart: r.prefillStart,
+    firstToken: r.firstToken,
+    kvStart: r.kvStart,
+    kvReady: r.kvReady,
+    decodeStart: r.decodeStart,
+    finish: r.finish,
+    itls: r.itls.slice(),
+  }));
+  return { metrics: metricsOf(res), result: { reqs } };
+}
+
 /** Run one configuration on a workload and return its metrics. */
 export function run(cfg: SimConfig, rows: Row[]): Metrics {
   return metricsOf(engine.simulate(cfg, rows));
