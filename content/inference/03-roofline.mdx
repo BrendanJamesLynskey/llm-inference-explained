@@ -1,0 +1,125 @@
+<Callout kind="prereq">
+
+The [generation loop](/learn/01-generation-loop) (prefill vs decode) and the
+[KV cache](/learn/02-kv-cache).
+
+</Callout>
+
+<Layer kind="concept">
+
+A GPU step can be slow for two different reasons: it has too much
+**arithmetic** to do, or too many **bytes** to move from memory. The
+roofline model says a step takes whichever is longer:
+
+- arithmetic time = FLOPs ÷ the chip's FLOP rate;
+- memory time = bytes moved ÷ the chip's memory bandwidth.
+
+Their ratio for a given step, FLOPs per byte, is its **arithmetic
+intensity**. The chip has a balance point too, its **ridge point**: peak
+FLOP rate ÷ peak bandwidth. Below the ridge a step is **memory-bound**: the
+arithmetic units wait for data. Above it the step is **compute-bound**.
+
+With the H100 figures in the simulator this site borrows (989 TFLOP/s dense
+BF16 and 3.35 TB/s, derated to 55% and 80% of peak), the ridge sits at
+**203 FLOP per byte**. For the A100 it is about 105.
+
+Now look at what a decode step does. To produce one token per sequence it
+must read **every weight** of the model once (the whole layer stack and the
+output head) plus each sequence's KV cache. For Llama-3-8B at batch 1 with
+2,048 tokens of context that is 15.28 GB read, for about 16 billion FLOPs:
+an intensity of **1.1 FLOP/B**, two hundred times below the ridge. The step
+takes 6.201 ms, almost all of it waiting on memory: about 161 tokens per
+second, with the arithmetic units nearly idle.
+
+Prefill is the opposite. A 2,048-token prompt multiplies every weight by
+2,048 token vectors, so each byte read feeds about two thousand FLOPs
+(2,081.7 FLOP/B). It is compute-bound: 59.033 ms on one H100.
+
+Move the sliders below and watch the decode point climb as the batch grows.
+
+</Layer>
+
+<RooflineWidget />
+
+<Layer kind="concept">
+
+That last observation is the economic engine of LLM serving. Batch 64
+sequences together and one decode step still reads the weights **once**,
+but now produces 64 tokens. The step takes 12.514 ms instead of 6.201, so
+throughput rises from about 161 to about 5,114 tokens per second while each
+user's per-token latency only doubles. Intensity rises to 32 FLOP/B: still
+memory-bound, because the KV cache grows with the batch and has to be read
+too.
+
+So decode wants **large batches** (chapter 4), which need **memory for
+their caches** (chapter 5) and **fewer bytes per step** (chapter 8). Prefill
+needs none of that; it already saturates the chip. That difference is also
+why some systems run the two phases on separate machines, which the later
+chapters on disaggregation cover.
+
+</Layer>
+
+<Layer kind="maths">
+
+For a step with $F$ FLOPs and $B$ bytes on a device with FLOP rate
+$\pi$ and bandwidth $\beta$ (both derated):
+
+$$
+t = \max\!\left(\frac{F}{\pi}, \frac{B}{\beta}\right) + t_0,
+\qquad I = \frac{F}{B}, \qquad I^{*} = \frac{\pi}{\beta},
+$$
+
+memory-bound when $I < I^{*}$. The simulator adds a fixed $t_0 = 0.5$ ms per
+step (scheduling and kernel launches) and caps power at the board's TDP.
+
+For a transformer with $P_m$ matmul parameters, $L$ layers and width $d$,
+a decode step over batch $b$ with total context $c$ costs
+
+$$
+F = 2 P_m b + 4 L d\,(c + b), \qquad
+B = P_m w + b\,d\,w + (c + b)\,\kappa,
+$$
+
+with $w$ bytes per weight and $\kappa$ KV bytes per token: the weights once,
+one embedding row per sequence, and the cache. Prefill over $s$ tokens is
+$F = 2P_m s + 2Lds(s+1)$, $B = P_m w + s\,d\,w + s\kappa$.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/costModel.ts (excerpt), ported from hardware.py
+decode(ctx: number, batch: number): StepCost {
+  const flops = 2 * matmulParams(m) * batch + 4 * m.n_layers * m.d_model * (ctx + batch);
+  const nbytes = weightBytesRead(m, batch) + (ctx + batch) * kvBytesPerToken(m);
+  return time(flops, nbytes); // max(compute, memory) + overhead, TDP-capped
+}
+```
+
+`tests/unit/inference/costModel.test.ts` checks this port against 1,284
+steps written by the Python simulator (exactly, except the documented
+cube-root tolerance in the power-capped branch) and against every row of
+its [results.md §1](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/main/examples/results.md).
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The derating factors (55% of peak FLOP/s, 80% of peak bandwidth) and the
+0.5 ms step overhead are the simulator's assumptions, not measurements of
+any one engine. Real kernels reach different fractions at different
+shapes.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [Counting Bytes](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-03),
+  [The Roofline](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-04),
+  [Interactive: Put a Batch on the Roofline](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-05)
+- Glossary: [Roofline, arithmetic intensity and ridge point](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-roofline),
+  [Utilisation, MFU and MBU](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-mfu)
+- Williams, Waterman and Patterson, [Roofline: an insightful visual performance model for multicore architectures](https://doi.org/10.1145/1498765.1498785), CACM 2009
+
+</Callout>

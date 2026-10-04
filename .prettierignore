@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+coverage
+dist
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+playwright-report
+test-results
+.vercel
+
+# Generated test fixtures (from scripts/reference.py and scripts/cost_reference.py).
+tests/unit/fixtures/
+.lighthouseci/

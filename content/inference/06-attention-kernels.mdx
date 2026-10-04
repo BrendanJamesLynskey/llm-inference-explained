@@ -1,0 +1,110 @@
+<Callout kind="prereq">
+
+Attention itself, from the explainer's
+[Attention](https://transformer-decoder-explained.vercel.app/learn/03-attention)
+chapter, and [the roofline](/learn/03-roofline): memory traffic, not
+arithmetic, is often the limit.
+
+</Callout>
+
+<Layer kind="concept">
+
+Written the obvious way, attention for one head over $N$ tokens is three
+steps, each a separate GPU kernel:
+
+1. $S = QK^\top/\sqrt{d}$, an $N \times N$ matrix of scores, written to the
+   GPU's main memory (HBM);
+2. read $S$ back, apply the softmax row by row, write $P$ (another
+   $N \times N$ matrix);
+3. read $P$ and $V$, write the output $O = PV$.
+
+At 16 bits, the two $N\times N$ matrices for an 8,192-token sequence are
+128 MiB each, per head, per layer, written and read again. The arithmetic
+is cheap next to that traffic.
+
+**FlashAttention** never writes $S$ or $P$. It loads a tile of queries
+and a tile of keys and values into the chip's fast on-chip memory (SRAM:
+the FlashAttention paper cites 192 KB per streaming multiprocessor on an
+A100, against 40 to 80 GB of HBM), computes that tile's
+scores, and folds them straight into the output. The obstacle is the
+softmax: it needs each row's maximum and sum, which seem to need the whole
+row first. The fix is an **online softmax**. Keep, per query row, a running
+maximum $m$, a running sum $l$ and an unnormalised output. When a new tile
+raises the maximum, rescale what you have by $e^{m_{\text{old}} - m_{\text{new}}}$
+and carry on. At the end, divide by $l$. The result is exact, not an
+approximation: the widget below checks it against the textbook version.
+
+FlashAttention-2 reorganised the loops and the work split across threads for
+better utilisation; later versions target newer GPUs. The tiling idea is
+the same.
+
+**Decode has a different problem.** One new query per sequence, attending
+over a long cache. A kernel that parallelises over batch × heads has too
+little work to fill the GPU when the batch is small, while each query walks
+thousands of keys alone. **Split-K** (Flash-Decoding) also splits the
+_keys_: several workers each process a slice of the cache, producing a
+partial $(m, l, o)$, and a small final step merges them with the same
+rescaling rule. Again exact.
+
+</Layer>
+
+<FlashAttentionWidget />
+
+<Layer kind="maths">
+
+Online softmax for one query $q$ over key tiles $j$: with scores
+$s_i = q\cdot k_i/\sqrt d$,
+
+$$
+m' = \max(m, \max_{i \in j} s_i),\quad
+l' = l\,e^{m-m'} + \sum_{i\in j} e^{s_i - m'},\quad
+o' = o\,e^{m-m'} + \sum_{i\in j} e^{s_i - m'}\,v_i,
+$$
+
+starting from $m = -\infty$, $l = 0$, $o = 0$; the output is $o/l$. Two
+partial states merge the same way, which is all split-K needs:
+
+$$
+m = \max(m_a, m_b),\quad l = l_a e^{m_a - m} + l_b e^{m_b - m},\quad
+o = o_a e^{m_a - m} + o_b e^{m_b - m}.
+$$
+
+HBM traffic (FlashAttention, §3.2 and Theorem 2): standard attention moves
+$\Theta(Nd + N^2)$ elements (here $4Nd + 4N^2$); FlashAttention with $M$
+elements of SRAM moves $\Theta(N^2 d^2 / M)$. With key tiles of
+$B_c = \lceil M/4d \rceil$ there are $T_c = \lceil N/B_c\rceil$ passes over the
+queries, each reading $Q$ and $O$ and writing $O$, plus the running
+statistics: $2Nd + T_c(3Nd + 4N)$. The widget plots both.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/attentionKernels.ts — fold one tile into the state (excerpt)
+const mNew = Math.max(st.m, mTile);
+const alpha = st.m === -Infinity ? 0 : Math.exp(st.m - mNew); // rescale the past
+const o = st.o.map((v) => v * alpha);
+let l = st.l * alpha;
+s.forEach((x, i) => {
+  const p = Math.exp(x - mNew);
+  l += p;
+  V[from + i]!.forEach((v, c) => (o[c]! += p * v));
+});
+```
+
+The tests run tiled attention with tiles from 1 key to the whole sequence,
+and split-K with up to 1,500 workers over 1,000 keys, and require agreement
+with the textbook result to $10^{-12}$.
+
+</Layer>
+
+<Callout kind="deeper">
+
+- Key Publications 04 · [FlashAttention](https://brendanjameslynskey.github.io/Papers_04_Efficient_Inference/#slide-01)
+- Glossary: [Roofline, arithmetic intensity and ridge point](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-roofline)
+- Dao et al., [FlashAttention](https://arxiv.org/abs/2205.14135) (arXiv:2205.14135);
+  Dao, [FlashAttention-2](https://arxiv.org/abs/2307.08691) (arXiv:2307.08691);
+  Dao, Haziza, Massa and Sizov, [Flash-Decoding for long-context inference](https://crfm.stanford.edu/2023/10/12/flashdecoding.html) (2023)
+
+</Callout>

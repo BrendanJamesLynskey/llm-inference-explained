@@ -1,0 +1,114 @@
+<Callout kind="prereq">
+
+[The KV cache](/learn/02-kv-cache) (how big it gets) and
+[batching](/learn/04-batching) (why we want many sequences resident).
+
+</Callout>
+
+<Layer kind="concept">
+
+Continuous batching wants as many sequences resident as memory allows. The
+KV cache decides that, and caches grow one token at a time to a length
+nobody knows in advance.
+
+The naive answer is to reserve, per request, a contiguous slab big enough
+for the **maximum** length it could reach. Most requests stop far short, so
+most of each slab sits empty: memory reserved but never used, and
+fragmentation between slabs as requests come and go. The vLLM paper
+profiled existing systems storing actual token states in only 20.4% to
+38.2% of their KV-cache memory.
+
+**PagedAttention** borrows the operating system's answer to the same
+problem: virtual memory with pages.
+
+- The KV memory is cut into fixed-size **blocks** (say 16 tokens each).
+- Each sequence has a **block table**: logical block 0, 1, 2… → physical
+  block numbers, which can be anywhere.
+- A block is allocated only when a sequence's last block fills up. The only
+  waste is the unfilled tail of each sequence's last block.
+- The attention kernel follows the block table to gather keys and values,
+  so the blocks don't need to be contiguous.
+
+Paging makes three more things easy:
+
+- **Prefix sharing.** Two requests with the same system prompt, or several
+  samples of one prompt, can point their block tables at the same physical
+  blocks, with a reference count. When one of them writes into a shared,
+  partly full block, it gets its own copy first (**copy-on-write**).
+  Prefix caching keeps such blocks around after a request ends, so the next
+  request with that prefix skips its prefill. SGLang's RadixAttention
+  organises cached prefixes as a radix tree.
+- **Preemption.** When a running sequence needs a block and none is free,
+  the scheduler evicts a sequence. In the vLLM paper the latest-arrived
+  requests are preempted first, and either **swap** their blocks to CPU memory or
+  drop them and **recompute** the cache later (a prefill over prompt plus
+  output so far).
+- **Admission control.** A request is admitted only when its blocks fit.
+
+Step through the scenario: watch the shared blocks (S) appear when
+request 2 joins with request 0's prompt, and shrink the pool to force a
+preemption.
+
+</Layer>
+
+<PagingWidget />
+
+<Layer kind="maths">
+
+With block size $B$, a sequence of $n$ tokens occupies $\lceil n/B \rceil$
+blocks and wastes
+
+$$
+B\lceil n/B \rceil - n < B
+$$
+
+slots, against $n_{\max} - n$ for a contiguous reservation of $n_{\max}$. Over a
+batch, paged waste is under one block per sequence; contiguous waste grows
+with how far each sequence is from the maximum.
+
+A prefix of $p$ tokens shared by $k$ sequences is stored once instead of
+$k$ times: $\lfloor p/B \rfloor$ full blocks are shared outright and the
+partial tail block is copied on the first write.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/paging.ts — append with copy-on-write (excerpt)
+const needed = blocksFor(p, len + n) - table.length;
+const last = table[table.length - 1];
+const cow = last !== undefined && len % p.blockSize !== 0 && p.refs[last]! > 1;
+if (needed + (cow ? 1 : 0) > p.free.length) return false; // caller preempts
+if (cow) {
+  p.refs[last]!--;
+  table[table.length - 1] = takeBlock(p)!;
+}
+for (let i = 0; i < needed; i++) table.push(takeBlock(p)!);
+```
+
+The unit tests check that blocks are never double-booked, that sharing and
+copy-on-write keep the reference counts right, and that every request in
+the scenario finishes, with or without preemption.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The allocator is a teaching model of the idea in the vLLM paper, not
+vLLM's code: real engines use larger blocks, swap or recompute by policy,
+and track prefix-cache entries with their own eviction rules.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- Local LLM 03 · [Internal Fragmentation](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-02),
+  [PagedAttention](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-03)
+  and [Interactive: Page Allocation in Action](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-04)
+- Key Publications 04 · [PagedAttention & vLLM](https://brendanjameslynskey.github.io/Papers_04_Efficient_Inference/#slide-04)
+- Glossary: [PagedAttention](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-paged)
+- Kwon et al., [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) (arXiv:2309.06180);
+  Zheng et al., [SGLang](https://arxiv.org/abs/2312.07104) (RadixAttention, arXiv:2312.07104)
+
+</Callout>

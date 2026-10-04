@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "tolerance": 1e-05,
+  "config": {
+    "seq_len": 8,
+    "d_model": 16,
+    "n_heads": 2,
+    "d_ff": 32,
+    "n_blocks": 2,
+    "vocab_size": 64,
+    "seed": 42
+  },
+  "alphabet": "abcdefghijklmnopqrstuvwxyz0123456789 .,!?;:'\"()-\n+-*/=<>[]{}@#$%",
+  "files": [
+    "softmax.json",
+    "layernorm.json",
+    "gelu.json",
+    "matmul.json",
+    "causal_mask.json",
+    "attention.json",
+    "forward.json"
+  ]
+}

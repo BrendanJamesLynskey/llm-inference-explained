@@ -1,0 +1,108 @@
+<Callout kind="prereq">
+
+[The generation loop](/learn/01-generation-loop) (first token, then the
+rest) and [batching](/learn/04-batching) (the scheduler these numbers come
+from).
+
+</Callout>
+
+<Layer kind="concept">
+
+A serving system is judged by what users feel and what operators pay for.
+The standard vocabulary:
+
+- **TTFT, time to first token**: from the request's arrival to its first
+  output token. Queueing plus prefill. It is what makes a chat interface
+  feel responsive.
+- **TPOT, time per output token**: for one request, the average gap
+  between its tokens after the first,
+  (last token time − first token time) ÷ (output tokens − 1). It sets
+  reading speed.
+- **ITL, inter-token latency**: every individual gap. TPOT averages a
+  request's gaps; ITL keeps them, so a single 200 ms stall, invisible in
+  the TPOT, shows up in the ITL tail.
+- **End-to-end latency**: arrival to last token.
+- **Throughput**: output tokens (or requests) per second, over all users.
+- **Goodput**: requests per second that met **both** SLOs, a TTFT target and
+  a TPOT target. Throughput counts everything served; goodput counts only
+  what was served well enough. DistServe frames serving capacity this way,
+  as the highest request rate at which a target fraction of requests meet
+  their SLOs.
+
+**Why percentiles, and why p99.** Averages hide the tail, and the tail is
+what users remember. Means also move when a few requests are very slow.
+Report p50 for the typical experience and p90/p99 for the tail. Tails
+compound: if a page needs 100 independent requests and each is slow 1% of
+the time, 63% of page loads include at least one slow one.
+
+**Little's law** ties the averages together: the average number of
+requests in the system, $L$, equals the arrival rate $\lambda$ times the
+average time each spends there, $W$. It needs no assumptions about
+arrival patterns or service times, only a stable system. Use it as a
+sanity check on any simulator or load test: the widget measures $L$
+directly, by sweeping arrivals and departures, and compares it with
+$\lambda W$.
+
+Push the arrival rate up and watch TTFT's tail break its SLO first: as
+the server saturates, requests queue for prefill. Tighten the TPOT SLO and
+watch goodput fall below throughput.
+
+</Layer>
+
+<MetricsWidget />
+
+<Layer kind="maths">
+
+For request $r$ with arrival $a_r$, token times $\tau_{r,1} < \dots < \tau_{r,n_r}$:
+
+$$
+\text{TTFT}_r = \tau_{r,1} - a_r,\qquad
+\text{TPOT}_r = \frac{\tau_{r,n_r} - \tau_{r,1}}{n_r - 1},\qquad
+\text{ITL}_{r,i} = \tau_{r,i} - \tau_{r,i-1}.
+$$
+
+Percentiles interpolate linearly between order statistics: for sorted
+$x_{(0)} \le \dots \le x_{(n-1)}$ and $k = (n-1)\,p/100$,
+$q_p = x_{(\lfloor k\rfloor)} + (x_{(\lceil k\rceil)} - x_{(\lfloor k\rfloor)})(k - \lfloor k\rfloor)$
+(numpy's default, and the simulator's).
+
+Goodput $= |\{r : \text{TTFT}_r \le T_1,\ \text{TPOT}_r \le T_2\}| \,/\, (a_{\text{last}} - a_{\text{first}})$.
+
+Little's law: over a window $[0, H]$ that starts and ends empty,
+$L = \frac{1}{H}\int_0^H N(t)\,dt = \frac{1}{H}\sum_r W_r = \lambda W$ with
+$\lambda = n/H$ and $W$ the mean time in system. The tail: $P(\text{any of } N \text{ slow}) = 1 - 0.99^{N}$.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/metrics.ts (excerpt)
+export function percentileSorted(s: ArrayLike<number>, p: number): number {
+  if (s.length === 0) return NaN;
+  const k = ((s.length - 1) * p) / 100;
+  const lo = Math.floor(k);
+  const hi = Math.ceil(k);
+  return s[lo]! + (s[hi]! - s[lo]!) * (k - lo);
+}
+```
+
+The same function as `_percentile_sorted` in Disaggregated_Inference_Sim's
+`metrics.py`, so numbers from this site and from the simulator are
+computed the same way.
+
+</Layer>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [The Metrics Users Feel: TTFT, TPOT, Goodput](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-09);
+  InfSim 06 · [Latency: Distributions, Not Averages](https://brendanjameslynskey.github.io/InfSim_06_Metrics_Hotspots_Validation/#slide-02)
+  and [Utilisation and Efficiency](https://brendanjameslynskey.github.io/InfSim_06_Metrics_Hotspots_Validation/#slide-03)
+- Glossary: [TTFT, TPOT and inter-token latency](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-ttft),
+  [Goodput and SLO attainment](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-goodput),
+  [Percentiles and tail-latency CCDFs](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-percentiles),
+  [Little's law](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-little)
+- Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670) (goodput, arXiv:2401.09670);
+  Little, [A Proof for the Queuing Formula: L = λW](https://doi.org/10.1287/opre.9.3.383), Operations Research, 1961
+
+</Callout>

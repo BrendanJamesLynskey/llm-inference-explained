@@ -1,0 +1,127 @@
+<Callout kind="prereq">
+
+You need queries, keys, values and the causal mask from the explainer's
+[Attention](https://transformer-decoder-explained.vercel.app/learn/03-attention)
+chapter, and the generation loop from [chapter 1](/learn/01-generation-loop).
+
+</Callout>
+
+<Layer kind="concept">
+
+In every attention layer, each position computes a **query**, a **key** and
+a **value** from its own hidden state. The causal mask means position _i_
+only ever looks at keys and values of positions 0…_i_.
+
+Now generate one more token. The new position needs its own query, and the
+keys and values of every earlier position. But those earlier keys and
+values were computed from earlier hidden states, which depend only on
+earlier tokens, and appending a token can't change the past. So they are
+exactly what they were last step. Recomputing them is pure waste.
+
+The **KV cache** keeps them. After prefill it holds the prompt's keys and
+values for every layer. Each decode step computes the new token's query,
+key and value, appends the key and value, and attends over the whole cache.
+Everything else in the step (the MLP, the output head) only ever needed the
+new position anyway.
+
+This is not an approximation. Below, a real (untrained) model generates
+with the cache, and at every step the full sequence is also recomputed from
+scratch without one. The two logit vectors are compared number by number.
+They match **exactly**, because the cached path performs the same floating-point
+operations in the same order; the masked future positions that the
+full pass carries contribute exact zeros.
+
+</Layer>
+
+<KvCacheWidget />
+
+<Layer kind="concept">
+
+The cache turns each decode step from "process the whole sequence" into
+"process one token, read the cache". The price is memory. Every layer
+stores a key and a value vector per token per KV head, for as long as the
+sequence lives.
+
+How big? For Llama-3-8B, which has 32 layers and 8 KV heads of 128
+dimensions, in BF16:
+
+$2 \times 32 \times 8 \times 128 \times 2 = 131{,}072$ bytes, **128 KiB per
+token**. Llama-3-70B (80 layers, 8 KV heads) needs 320 KiB per token. Sixteen
+8B sequences of 8,192 tokens hold 17.18 GB of cache, more than the 16.06 GB
+of weights. On a GPU with 80 GB, the cache, not the weights, decides how
+many users you can serve at once. That is why the next chapters spend so
+much effort on it.
+
+**Shrinking it.** Multi-head attention (MHA) keeps K and V for every head.
+**Multi-query attention** (MQA) shares one K/V head across all query heads.
+**Grouped-query attention** (GQA), which Llama 3 uses, shares each K/V head
+across a group (32 query heads, 8 KV heads: 4 per group), cutting the cache
+4× against MHA with little quality loss. **Multi-head latent attention**
+(MLA), from DeepSeek-V2, caches one compressed latent per token per layer
+(512 values, plus a 64-value key for rotary positions) and reconstructs the
+heads' keys and values from it. Use the calculator to compare them.
+
+</Layer>
+
+<KvCalculatorWidget />
+
+<Layer kind="maths">
+
+Per token, summed over layers, the cache holds (DeepSeek-V2, Table 1):
+
+| Variant | Values per token   |
+| ------- | ------------------ |
+| MHA     | $2\,n_h\,d_h\,l$   |
+| GQA     | $2\,n_g\,d_h\,l$   |
+| MQA     | $2\,d_h\,l$        |
+| MLA     | $(d_c + d_h^R)\,l$ |
+
+for $n_h$ heads of dimension $d_h$, $n_g$ KV groups, $l$ layers, KV
+compression dimension $d_c$ and decoupled rotary key dimension $d_h^R$.
+Bytes are values × bytes per value × tokens.
+
+**Why it's exact.** Layer by layer, the hidden state of position $i$
+depends only on tokens $0..i$ (the causal mask), so $k_i = W_K h_i$ and
+$v_i = W_V h_i$ never change once computed. For the new position $t$,
+
+$$
+o_t = \sum_{j \le t} \operatorname{softmax}_j\!\left(\frac{q_t \cdot k_j}{\sqrt{d_h}}\right) v_j
+$$
+
+uses $q_t$ (new) and $k_j, v_j$ for $j \le t$ (cached, plus the new one).
+
+**Work saved.** Recomputing a length-$S$ sequence costs
+$L(8SD^2 + 4S^2D + 4SDF) + 2SDV$ FLOPs; a cached step costs
+$L(8D^2 + 4SD + 4DF) + 2DV$. Over a whole generation the uncached total
+grows like $S^2$ (and $S^3$ in the attention term), the cached one like $S$.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/transformer/kvcache.ts — one cached decode step (excerpt)
+const q = mm(ln1, w.attn.W_q, counter)[0]!;
+const k = mm(ln1, w.attn.W_k, counter)[0]!;
+const v = mm(ln1, w.attn.W_v, counter)[0]!;
+layer.K.push(k);
+layer.V.push(v);
+// … then per head: scores = q · Kᵀ / √d_head over every cached position.
+```
+
+The test that makes the claim (`tests/unit/transformer/kvcache.test.ts`)
+generates 12 tokens greedily on two model sizes and asserts, with no
+tolerance, that every cached logit vector equals full recomputation's.
+
+</Layer>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [KV-Cache Arithmetic](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-06);
+  Local LLM 03 · [Why the KV Cache Dominates Serving](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-01)
+- Glossary: [KV cache](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-kvcache)
+- Shazeer, [Fast Transformer Decoding: One Write-Head is All You Need](https://arxiv.org/abs/1911.02150) (MQA, arXiv:1911.02150);
+  Ainslie et al., [GQA](https://arxiv.org/abs/2305.13245) (arXiv:2305.13245);
+  DeepSeek-AI, [DeepSeek-V2](https://arxiv.org/abs/2405.04434) (MLA, arXiv:2405.04434)
+
+</Callout>

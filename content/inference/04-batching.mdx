@@ -1,0 +1,133 @@
+<Callout kind="prereq">
+
+[The roofline](/learn/03-roofline): why a decode step with 64 sequences
+costs barely more than one with a single sequence.
+
+</Callout>
+
+<Layer kind="concept">
+
+Batching is how a server turns a memory-bound decode step into many users'
+tokens. The question is _which_ requests share each step. Four answers, in
+the order the field found them:
+
+**Static batching.** Collect a full batch, prefill it, decode until every
+member has finished, then take the next batch. Simple, and the way most
+offline jobs work. Two costs: early arrivals wait for the batch to fill,
+and a request that finishes after 10 tokens holds its slot (as padding)
+until the batch's longest request finishes after 500.
+
+**Dynamic batching.** The same, but start a partial batch once the oldest
+waiting request has waited a set time. It bounds the queueing delay at low
+load. It doesn't fix the padding.
+
+**Continuous batching** (iteration-level scheduling, from Orca). Make the
+scheduling decision every step, not every batch. When a sequence finishes,
+its slot goes to a waiting request at the very next step. Slots never sit
+idle as padding, and new requests don't wait for a whole batch to drain.
+It is the basis of modern serving engines.
+
+**Chunked prefill** (from Sarathi). Continuous batching still has to
+prefill each newcomer. If it runs that prefill as its own step, every
+running sequence's next token waits behind it, and a long prompt causes a
+visible stall in everyone else's stream. Chunked prefill gives each step a
+**token budget**: the decoding sequences take one token each, and the rest
+of the budget goes to a slice ("chunk") of a waiting prompt. Prefill is
+spread over several steps that also make decode progress, so inter-token
+latency stays smooth.
+
+The widget runs the same 160 requests through all four. Raise the arrival
+rate and watch static batching's latency, and continuous batching's
+inter-token tail (ITL p99) when prompts are long.
+
+</Layer>
+
+<BatchingWidget />
+
+<Layer kind="concept">
+
+What to notice:
+
+- **Throughput and latency trade off through the batch size.** A bigger
+  maximum batch raises tokens per second (more sequences share each read of
+  the weights) but each step gets slower, so each user's tokens come more
+  slowly. The SLO column is the arbiter.
+- **Continuous beats static** on both throughput and first-token latency
+  once lengths vary, because no slot is wasted on padding and nobody waits
+  for a batch to fill. (The unit tests assert this on a 300-request run.)
+- **Chunked prefill smooths the stream**: it bounds the ITL tail that
+  prefill steps create. Its effect on time to first token can go either
+  way: each prompt now takes several steps, but newcomers no longer queue
+  behind whole prefills. The
+  budget is the knob: a small chunk keeps decode smooth, a large one
+  finishes prompts sooner.
+
+Real engines add a memory-aware admission check (a request is only admitted
+if its KV cache fits: chapter 5), priorities, preemption, and many tuned
+details. vLLM, SGLang and TensorRT-LLM all implement continuous batching
+and chunked prefill; their defaults change between versions, so check
+their documentation for current behaviour.
+
+</Layer>
+
+<Layer kind="maths">
+
+Each step's time comes from the roofline model of chapter 3. A pure decode
+step over $b$ sequences with total context $c$ costs
+$t_d(b, c) = \max(F/\pi, B/\beta) + t_0$, with $B \approx P_m w$ dominated by
+the weights for small $b$. So $b$ sequences per step give roughly $b$ times
+the throughput for a step only slightly longer than $t_d(1, \cdot)$.
+
+A **mixed** step (chunked prefill) carrying prompt chunks covering positions
+$(a_i, e_i]$ and $b$ decodes costs, in this site's extension of the same
+closed form,
+
+$$
+F = 2P_m\Big(b + \sum_i (e_i - a_i)\Big) + \sum_i 2Ld\,\big(e_i(e_i+1) - a_i(a_i+1)\big) + 4Ld(c + b),
+$$
+
+which reduces exactly to the simulator's prefill formula for one whole
+prompt and to its decode formula for no chunks (both tested).
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/batching.ts — the chunked policy's step (excerpt)
+const decoding = running.filter((s) => s.done === s.req.prompt);
+let budget = Math.max(0, cfg.chunk - decoding.length); // decodes go first
+for (const s of running) {
+  if (s.done === s.req.prompt || budget === 0) continue;
+  const take = Math.min(budget, s.req.prompt - s.done);
+  chunks.push([s.done, s.done + take]);
+  s.done += take;
+  budget -= take;
+}
+const step = cm.mixed(chunks, ctx, decoding.length);
+```
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The scheduler is a teaching model: one instance, no memory limit beyond
+the batch size, prefill-first admission for the continuous policy. Use it
+for the shape of the trade-offs, not for capacity planning.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [Batching: Static, Continuous, Chunked, Paged](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-07);
+  Local LLM 03 · [Continuous Batching](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-05)
+  and [Prefix Caching & Chunked Prefill](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-06)
+- Glossary: [Continuous batching](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-batching),
+  [Chunked prefill](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-chunked)
+- Yu et al., [Orca: A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu) (OSDI 2022);
+  Agrawal et al., [SARATHI](https://arxiv.org/abs/2308.16369) (arXiv:2308.16369) and
+  [Sarathi-Serve](https://arxiv.org/abs/2403.02310) (arXiv:2403.02310)
+- Engine docs: [vLLM](https://docs.vllm.ai/), [SGLang](https://docs.sglang.ai/),
+  [TensorRT-LLM](https://github.com/NVIDIA/TensorRT-LLM)
+
+</Callout>

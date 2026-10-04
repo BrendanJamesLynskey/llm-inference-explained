@@ -1,0 +1,121 @@
+<Callout kind="prereq">
+
+[The roofline](/learn/03-roofline) (decode is memory-bound) and the
+explainer's [Sampling](https://transformer-decoder-explained.vercel.app/learn/07-sampling)
+chapter.
+
+</Callout>
+
+<Layer kind="concept">
+
+Decode is memory-bound: a step spends its time reading the weights, and the
+arithmetic units mostly wait. So a step that checks **several** positions
+costs about the same as one that produces a single token. Speculative
+decoding exploits that.
+
+1. A small, fast **draft** model (or a cheap extra head on the big model)
+   guesses the next $\gamma$ tokens, one after another.
+2. The large **target** model runs **one** forward pass over all $\gamma$
+   guesses at once, as if they were a short prompt, which gives its own
+   distribution at every one of those positions.
+3. A **verify** rule walks the guesses in order, accepting each with
+   probability $\min(1, p(x)/q(x))$, where $p$ is the target's probability
+   of the guessed token and $q$ the draft's. At the first rejection it
+   draws a replacement from the leftover distribution and stops. If all
+   $\gamma$ are accepted, the target's pass also gives one more token for
+   free.
+
+Each target pass therefore yields between 1 and $\gamma + 1$ tokens. And
+the rule is built so that the tokens come out with **exactly** the target
+model's distribution. Speculative decoding changes the speed, never the
+output distribution: the draft only decides how much of the target's work
+is reused. (Under greedy decoding this reduces to "keep the guesses that
+match the target's argmax".)
+
+What it costs: the draft's own steps, and some wasted target work on
+rejected guesses. It pays when the draft agrees with the target often
+(acceptance $\alpha$ high) and is cheap (cost ratio $c$ low). It helps most
+at small batch sizes; at large batches the target step is no longer so
+memory-bound, and the verified positions compete with other users'.
+
+**Variants.** **Medusa** adds several extra decoding heads to the target
+itself, each predicting a token further ahead, and verifies a tree of
+candidates in one pass. **EAGLE** drafts at the level of the target's
+hidden features rather than tokens, with a light head. Both avoid running
+a separate draft model.
+
+</Layer>
+
+<SpeculativeWidget />
+
+<Layer kind="maths">
+
+Let the target be $p$ and the draft $q$. A drafted $x \sim q$ is accepted with
+probability $\min(1, p(x)/q(x))$, so the per-token acceptance is
+
+$$
+\beta = \sum_x q(x)\min\!\left(1, \frac{p(x)}{q(x)}\right) = \sum_x \min(p(x), q(x)).
+$$
+
+On rejection the replacement comes from $r(x) = \frac{\max(0, p(x) - q(x))}{1 - \beta}$.
+The emitted token's distribution is then
+
+$$
+\min(p(x), q(x)) + (1 - \beta)\,r(x) = p(x),
+$$
+
+exactly the target's (Leviathan et al., §3; Chen et al.). With i.i.d.
+acceptance $\alpha = \mathbb{E}[\beta]$ and $\gamma$ drafts, the expected tokens per
+target pass are
+
+$$
+\mathbb{E}[\text{tokens}] = \frac{1 - \alpha^{\gamma+1}}{1 - \alpha},
+$$
+
+and if a draft step costs $c$ target steps, the expected speed-up is
+$\frac{1 - \alpha^{\gamma+1}}{(1-\alpha)(\gamma c + 1)}$ (their Theorem 3.8). For
+example $\alpha = 0.8$, $\gamma = 4$ gives 3.36 tokens per pass, and with
+$c = 0.05$ a 2.80× speed-up.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/speculative.ts (excerpt)
+export function verify(
+  p: Vector,
+  q: Vector,
+  x: number,
+  u: number,
+  rng: () => number,
+) {
+  if (u < Math.min(1, p[x]! / q[x]!)) return { accepted: true, token: x };
+  return { accepted: false, token: sampleFromProbs(residual(p, q), rng) };
+}
+```
+
+The tests check the emitted distribution equals $p$ to $10^{-14}$, and run
+40,000 Monte Carlo rounds whose acceptance, tokens per pass and token
+histogram match the formulas.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The toy target and draft in the widget are fixed 8-token distributions, so
+acceptance is the same at every position. Real acceptance varies with the
+text, the models and the sampling temperature.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- Local LLM 03 · [Speculative Decoding & Medusa](https://brendanjameslynskey.github.io/Local_LLM_03_vLLM_Architecture/#slide-07);
+  Key Publications 04 · [Speculative Decoding](https://brendanjameslynskey.github.io/Papers_04_Efficient_Inference/#slide-05)
+- Leviathan, Kalman and Matias, [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192) (arXiv:2211.17192);
+  Chen et al., [Accelerating Large Language Model Decoding with Speculative Sampling](https://arxiv.org/abs/2302.01318) (arXiv:2302.01318)
+- Cai et al., [Medusa](https://arxiv.org/abs/2401.10774) (arXiv:2401.10774);
+  Li et al., [EAGLE](https://arxiv.org/abs/2401.15077) (arXiv:2401.15077)
+
+</Callout>

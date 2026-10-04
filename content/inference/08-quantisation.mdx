@@ -1,0 +1,123 @@
+<Callout kind="prereq">
+
+[The roofline](/learn/03-roofline) (a decode step's time is mostly bytes ÷
+bandwidth) and [the KV cache](/learn/02-kv-cache) (what it costs in bytes).
+
+</Callout>
+
+<Layer kind="concept">
+
+If a decode step's time is mostly "read every weight, then read the cache",
+the most direct way to speed it up is to make those bytes fewer. That is
+what quantisation for inference is mostly about. Storing numbers in fewer
+bits also lets bigger models, longer contexts and larger batches fit in the
+same memory.
+
+Three things can be quantised, and they behave differently:
+
+- **Weights only** (W8A16, W4A16). Weights are stored in 8 or 4 bits and
+  converted back to 16-bit inside the matrix-multiply kernel; activations
+  and arithmetic stay 16-bit. Decode reads half or a quarter of the weight
+  bytes, so memory-bound steps get almost proportionally faster. Methods
+  such as **GPTQ** and **AWQ** choose the rounding carefully so 4-bit
+  weights lose little accuracy.
+- **Weights and activations** (W8A8, e.g. INT8 or FP8). Now the multiply
+  itself runs in 8 bits on tensor cores that support it, which also raises
+  the compute roof: that helps prefill, which is compute-bound. Activations
+  have outliers that make this harder; **LLM.int8()** handles them in 16-bit
+  separately, and **SmoothQuant** moves the difficulty from activations into
+  weights.
+- **The KV cache** (FP8, INT8, or lower: **KIVI** goes to 2 bits). At long
+  context and large batch the cache can outweigh the weights in bytes per
+  step, so this can matter more than weight quantisation. It also doubles or
+  quadruples how many tokens fit.
+
+The widget shows where a decode step's bytes go. At batch 1 they are almost
+all weights; at long context and large batch, the cache takes over.
+
+</Layer>
+
+<QuantisationWidget />
+
+<Layer kind="concept">
+
+Some figures from the same cost model, Llama-3-8B on one H100:
+
+| Step                   | BF16                | 8-bit weights       | 4-bit weights       |
+| ---------------------- | ------------------- | ------------------- | ------------------- |
+| batch 1, context 2,048 | 6.201 ms, 161 tok/s | 3.400 ms, 294 tok/s | 2.000 ms, 500 tok/s |
+
+and at batch 32 with 8,192 tokens of context each, where the cache
+(34.36 GB per step in BF16) is more than twice the weights (15.01 GB): an FP8
+cache takes the step from 18.92 ms to 12.51 ms, and 8-bit weights on top to
+9.71 ms. The step stays memory-bound throughout, so time tracks bytes.
+
+What the model leaves out: the cost of dequantising (usually hidden inside
+the kernel, but not always), faster 8-bit arithmetic for prefill, and, most
+importantly, **accuracy**. Fewer bits always risk quality; every method
+above is about keeping the loss small, and how small depends on the model
+and the task. Measure it on your workload.
+
+</Layer>
+
+<Layer kind="maths">
+
+With $w$ bytes per weight and $\kappa = 2 L\,n_{kv}\,d_h\,b_{kv}$ bytes of cache
+per token, a decode step over batch $b$ and total context $c$ reads
+
+$$
+B = \underbrace{P_m w + b\,d\,w}_{\text{weights}} + \underbrace{(c + b)\,\kappa}_{\text{KV cache}},
+$$
+
+and while it is memory-bound, $t \approx B / \beta + t_0$. Halving $w$ halves the
+first term; halving $b_{kv}$ halves the second. Which matters more depends
+on $c\kappa$ against $P_m w$: for Llama-3-8B in BF16 the cache passes the
+weights once the batch holds about 115,000 tokens of context in total
+($15.01\,\text{GB} / 128\,\text{KiB}$).
+
+A symmetric $k$-bit quantiser with scale $s$ stores
+$\hat{x} = s \cdot \operatorname{round}(x/s)$ with
+$\operatorname{round}(x/s) \in [-2^{k-1}, 2^{k-1}-1]$; methods differ in how they
+choose $s$ (per tensor, per channel, per group) and which errors they
+minimise.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/quantisation.ts (excerpt)
+export function decodeBreakdown(m, device, nDevices, ctxPerSeq, batch) {
+  const s = costModel(m, device, { nDevices }).decode(ctxPerSeq * batch, batch);
+  const kv = (ctxPerSeq * batch + batch) * kvBytesPerToken(m);
+  return { weightBytes: s.bytes - kv, kvBytes: kv, time: s.time /* … */ };
+}
+```
+
+Formats are just `weight_bytes` and `kv_bytes` on the model shape, the same
+fields the simulator's `ModelSpec` has; the unit tests check the BF16 case
+reproduces results.md §1 (6.201 ms).
+
+</Layer>
+
+<Callout kind="illustrative">
+
+Speed-ups here are bytes-only roofline estimates. Real gains depend on
+kernel support for each format on each GPU generation; check your engine's
+documentation for which formats it accelerates.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- Local LLM 07 · [Why Quantise](https://brendanjameslynskey.github.io/Local_LLM_07_Quantization/#slide-01),
+  [AWQ & GPTQ](https://brendanjameslynskey.github.io/Local_LLM_07_Quantization/#slide-05)
+  and [FP8 & Beyond](https://brendanjameslynskey.github.io/Local_LLM_07_Quantization/#slide-06)
+- Glossary: [Quantisation](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-quant)
+- Dettmers et al., [LLM.int8()](https://arxiv.org/abs/2208.07339) (arXiv:2208.07339);
+  Frantar et al., [GPTQ](https://arxiv.org/abs/2210.17323) (arXiv:2210.17323);
+  Lin et al., [AWQ](https://arxiv.org/abs/2306.00978) (arXiv:2306.00978);
+  Xiao et al., [SmoothQuant](https://arxiv.org/abs/2211.10438) (arXiv:2211.10438);
+  Liu et al., [KIVI](https://arxiv.org/abs/2402.02750) (arXiv:2402.02750)
+
+</Callout>

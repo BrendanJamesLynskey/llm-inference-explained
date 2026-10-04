@@ -1,0 +1,123 @@
+<Callout kind="prereq">
+
+The explainer's [Stacking blocks](https://transformer-decoder-explained.vercel.app/learn/06-stacking)
+(a model is a stack of identical blocks) and [the roofline](/learn/03-roofline).
+
+</Callout>
+
+<Layer kind="concept">
+
+Llama-3-70B's weights alone are 141.10 GB in BF16: they don't fit on one
+80 GB GPU, before any KV cache. Even when a model fits, spreading it over
+several GPUs adds their memory bandwidth together, and decode is
+bandwidth-bound. There are three main ways to split a model, and each one
+adds a different kind of message.
+
+**Tensor parallelism (TP)** splits every weight matrix across the $n$
+devices. Megatron-LM's arrangement splits the attention heads and the MLP's
+hidden dimension so that each block needs just **two all-reduces** in the
+forward pass: one after attention, one after the MLP. Every device holds
+$1/n$ of every layer and does $1/n$ of every multiply. The messages are
+small (one activation vector per token) but there are many of them, twice
+per layer, on the critical path of every step. TP wants the fastest link
+you have, which is why it normally stays inside one NVLink-connected server.
+
+**Pipeline parallelism (PP)** gives each device a contiguous slice of the
+layers. A token's activations pass from stage to stage: one message per
+boundary per step. Cheap on the link, so PP can span slower links between
+servers. The catch is the **bubble**: stage 2 can't start until stage 1
+finishes, so with a single batch only one stage is busy at a time. Keeping
+several micro-batches in flight fills the pipeline; GPipe's bubble fraction
+is $(n-1)/(m+n-1)$ for $n$ stages and $m$ micro-batches.
+
+**Expert parallelism (EP)** applies to mixture-of-experts models, whose MLP
+is many "expert" MLPs and a router that sends each token to its top-$k$.
+Different devices hold different experts, so every MoE layer needs an
+**all-to-all**: send each token to the devices holding its experts
+(dispatch), and bring the results back (combine).
+
+Real deployments mix them, for example TP inside a server, PP or EP across
+servers, and data parallelism (independent replicas) on top.
+
+</Layer>
+
+<ParallelismWidget />
+
+<Layer kind="concept">
+
+With the simulator's link figures and this page's first-order model, a
+Llama-3-70B decode step at batch 16 on 4× H100 takes 14.47 ms of compute,
+and TP's 160 all-reduces add 4.94 ms over NVLink but 24.23 ms over 100 GbE.
+Notice that on NVLink almost all of it (4.80 ms) is the per-message latency
+term, not bandwidth: decode messages are tiny. That is a pessimistic
+estimate (collective libraries have low-latency algorithms for small
+messages, and engines overlap communication with compute), but the
+direction is right: decode-time TP is latency-sensitive, and slow links
+make it impractical. A pipeline boundary over InfiniBand, by contrast,
+moves 256 KiB per step in about 46 µs.
+
+</Layer>
+
+<Layer kind="maths">
+
+Ring all-reduce of $S$ bytes over $n$ devices sends $\frac{2(n-1)}{n}S$ bytes per
+device in $2(n-1)$ messages, so on a link with bandwidth $\beta_\ell$ and
+per-message latency $\lambda$
+
+$$
+t_{\text{AR}}(S) = \frac{2(n-1)}{n}\frac{S}{\beta_\ell} + 2(n-1)\lambda .
+$$
+
+TP per decode step: $2L$ all-reduces of $S = b\,d\,a$ ($b$ tokens, width $d$,
+$a$ bytes per activation). PP: $(n-1)$ boundaries of $b\,d\,a$ bytes each.
+EP with top-$k$ routing over $L_{\text{moe}}$ layers: about
+$2\,b\,k\,d\,a\,\frac{n-1}{n}$ bytes per layer leave each device. Pipeline
+bubble: $\frac{n-1}{m+n-1}$; with 4 stages, 4 micro-batches idle 43% of the
+time and 16 micro-batches 16%.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/inference/parallel.ts (excerpt)
+export function ringAllReduce(size: number, n: number, link: Link): Comm {
+  if (n <= 1) return ZERO;
+  const bytes = (2 * (n - 1) * size) / n;
+  const messages = 2 * (n - 1);
+  return {
+    bytes,
+    time: bytes / link.bandwidth + messages * link.latency,
+    messages,
+  };
+}
+```
+
+The links (NVLink 4, PCIe Gen5, InfiniBand NDR, 100 GbE) are copied from the
+simulator's `hardware.py`, and a unit test checks the copy against the
+Python fixture.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+Communication times are first-order estimates with no overlap, ring
+algorithms only and the simulator's per-message latencies; the expert-
+parallel case is a hypothetical MoE with Llama-3-70B's width. Measure real
+collectives with your communication library's own benchmarks.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [Parallelism and Its Communication Bill](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-08)
+- Local LLM 05 · [Tensor Parallel](https://brendanjameslynskey.github.io/Local_LLM_05_Multi_GPU_Parallelism/#slide-02),
+  [Pipeline Parallel](https://brendanjameslynskey.github.io/Local_LLM_05_Multi_GPU_Parallelism/#slide-03),
+  [Expert Parallel](https://brendanjameslynskey.github.io/Local_LLM_05_Multi_GPU_Parallelism/#slide-05)
+- Glossary: [Tensor, pipeline and expert parallelism](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-parallelism)
+- Shoeybi et al., [Megatron-LM](https://arxiv.org/abs/1909.08053) (arXiv:1909.08053);
+  Huang et al., [GPipe](https://arxiv.org/abs/1811.06965) (arXiv:1811.06965);
+  Lepikhin et al., [GShard](https://arxiv.org/abs/2006.16668) (arXiv:2006.16668);
+  Fedus et al., [Switch Transformers](https://arxiv.org/abs/2101.03961) (arXiv:2101.03961)
+
+</Callout>

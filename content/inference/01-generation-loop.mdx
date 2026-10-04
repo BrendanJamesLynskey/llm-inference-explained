@@ -1,0 +1,125 @@
+<Callout kind="prereq">
+
+This chapter assumes you know what one forward pass of a decoder computes:
+tokens in, one row of logits per position out. The Transformer Decoder
+Explainer covers it in [Overview](https://transformer-decoder-explained.vercel.app/learn/01-overview),
+[Stacking blocks](https://transformer-decoder-explained.vercel.app/learn/06-stacking)
+and [Sampling](https://transformer-decoder-explained.vercel.app/learn/07-sampling).
+
+</Callout>
+
+<Layer kind="concept">
+
+A decoder-only language model has exactly one job: given a sequence of
+tokens, predict a distribution over the **next** token. Generating text is
+that job in a loop.
+
+1. **Tokenise** the prompt. Real models split text into sub-word pieces
+   with a learned vocabulary of tens of thousands of entries (Llama 3 uses
+   128,256). The tiny model on this page uses one token per character, with
+   64 of them, so you can see every token.
+2. **Prefill.** Run the whole prompt through the model in one forward pass.
+   Every position is processed at once, as matrices, which is what GPUs are
+   good at. Only the last position's logits matter for what comes next.
+3. **Sample** a token from those logits: greedy (the most likely),
+   temperature, top-k or top-p, exactly as in the explainer's
+   [Sampling](https://transformer-decoder-explained.vercel.app/learn/07-sampling) chapter.
+4. **Decode.** Append the token and run the model again to get the next
+   distribution. Repeat.
+5. **Stop** when the model emits an end-of-sequence token, when the output
+   matches a stop string the caller asked for, or when it hits a length
+   limit.
+
+Why can't step 4 be done in parallel, like prefill? Because token _t + 1_
+depends on token _t_, and token _t_ doesn't exist until the previous step
+has sampled it. Generation is **sequential by construction**. A 500-token
+answer needs 500 forward passes one after another, however many GPUs you
+own. Everything else in these chapters is about making each of those
+passes cheaper, or about filling the GPU with other users' passes while
+you wait.
+
+Try it below. Prefill is one step that takes in the whole prompt; each
+decode step takes in **one** token. The step log counts the arithmetic.
+
+</Layer>
+
+<GenerationLoopWidget />
+
+<Layer kind="concept">
+
+Two things in that log matter for the rest of the site.
+
+- **Prefill and decode are different workloads.** Prefill pushes many
+  tokens through each weight matrix at once. Decode pushes one token per
+  sequence through the same matrices. Chapter 3 shows that this makes
+  prefill limited by arithmetic and decode limited by memory bandwidth.
+- **Decode steps don't redo the prompt.** Each one processes a single
+  token, yet its output depends on every earlier token. That works because
+  the model keeps each earlier token's keys and values: the **KV cache**,
+  the subject of chapter 2.
+
+Users see the two phases as two latencies: the wait for the **first
+token** (mostly prefill) and the **time per output token** after that
+(decode). Chapter 10 makes those precise.
+
+</Layer>
+
+<Layer kind="maths">
+
+A decoder defines the probability of a sequence autoregressively:
+
+$$
+p(x_1, \dots, x_T) = \prod_{t=1}^{T} p(x_t \mid x_{<t}).
+$$
+
+Generation draws $x_{t} \sim p(\cdot \mid x_{<t})$ for $t = P+1, P+2, \dots$
+after a prompt of length $P$. With logits $\ell \in \mathbb{R}^{V}$ at the
+last position and temperature $\tau$,
+
+$$
+p(v \mid x_{<t}) = \frac{\exp(\ell_v / \tau)}{\sum_{u} \exp(\ell_u / \tau)}.
+$$
+
+Counting only matrix multiplies (2 FLOPs per multiply-add), a full forward
+pass over $S$ tokens of a model with $L$ blocks, width $D$, MLP width $F$
+and vocabulary $V$ costs
+
+$$
+\underbrace{L\,(8SD^2 + 4S^2D + 4SDF)}_{\text{blocks}} + \underbrace{2SDV}_{\text{output head}}
+$$
+
+FLOPs: the four attention projections, the two attention products and the
+two MLP matrices. Decoding without a cache would pay this again at every
+step with $S$ one larger each time. The widget's FLOP column is this formula
+(for prefill) and its one-token version (for decode); a unit test checks
+both against FLOPs counted inside the matrix multiplies.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/components/interactive/GenerationLoopWidget.tsx (simplified)
+const { logits, cache } = prefill(promptIds, config, weights); // one pass, S tokens
+let next = sample(logits[promptIds.length - 1], mode, rng);
+while (next !== STOP_ID && length < MAX_LEN) {
+  const l = decodeStep(next, cache, config, weights); // one token in
+  next = sample(l, mode, rng);
+}
+```
+
+`prefill` and `decodeStep` live in `src/lib/transformer/kvcache.ts`, next to
+the explainer's vendored transformer. Chapter 2 explains what `cache` holds.
+
+</Layer>
+
+<Callout kind="deeper">
+
+- InfSim 03 · [Two Phases: Prefill and Decode](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-01)
+  and [Counting FLOPs](https://brendanjameslynskey.github.io/InfSim_03_LLM_Inference_Workloads/#slide-02)
+- Glossary: [Prefill and decode](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-prefill),
+  [FLOP and byte counting](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-flops)
+- Vaswani et al., [Attention Is All You Need](https://arxiv.org/abs/1706.03762) (arXiv:1706.03762);
+  Llama 3's vocabulary and shapes: [The Llama 3 Herd of Models](https://arxiv.org/abs/2407.21783) (arXiv:2407.21783)
+
+</Callout>
