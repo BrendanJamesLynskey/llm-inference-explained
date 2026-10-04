@@ -1,0 +1,159 @@
+<Callout kind="prereq">
+
+Chapters [11](/learn/11-why-disaggregate), [12](/learn/12-moving-the-kv-cache)
+and [13](/learn/13-live-simulator); [batching](/learn/04-batching) for
+chunked prefill, the colocated alternative.
+
+</Callout>
+
+<Layer kind="concept">
+
+Disaggregation removes one problem, prefill stalling decode, and adds
+three: a KV hand-off on every request, a pool ratio that has to match the
+workload, and more machinery (two schedulers, a router, a transfer
+engine). Whether that trade pays depends on the model, the load and the
+link. The interactive sweeps the offered load from 2 to 14 req/s and runs
+both clusters at every point.
+
+**Small models.** Llama-3-8B fits on one H100, and its prefills are short
+(59.0 ms for 2,048 tokens), so a colocated decode step is only ever
+delayed by a short prefill. On two colocated H100s it meets both SLOs for
+100.0% of requests at every load from 2 to 14 req/s; so does 1P1D. What
+disaggregation changes is the balance between the two latencies: at
+8 req/s TPOT p99 improves from 12.2 ms to 8.8 ms, while TTFT p99 worsens
+from 287.6 ms to 353.6 ms, because one prefill instance now serves every
+prompt (results.md §11). If the colocated cluster already meets its SLOs,
+disaggregation buys margin on one SLO by spending it on the other.
+
+**High load and the wrong ratio.** One Llama-3-70B prefill instance can
+sustain about 7.49 req/s of these prompts. Below that, 1P1D wins clearly;
+above it, prompts queue without bound: at 10 req/s 1P1D meets 0.0% of
+SLOs, worse than colocated (3.8%), whose two instances both prefill. The
+fix is the ratio, not the idea: 2P1D meets 100.0% at every load from 2 to
+10 req/s (results.md §4). A fixed ratio is only right for one workload
+mix; production systems resize pools or route adaptively.
+
+**Slow links.** Over 25 GbE, Llama-3-70B's 671.1 MB hand-offs fill the
+link at about 4.7 req/s. Disaggregation then meets fewer SLOs than
+colocated serving at every load from 2 to 12 req/s (at 14 both fail): at
+5 req/s it meets 49.4% of SLOs against colocated's 89.7%, with the link
+95.1% busy. Compression (chapter 12) or a faster link is a prerequisite,
+not an optimisation.
+
+**Low load.** With few requests in flight there are few prefills to
+interfere with, and two half-idle pools spend most of their energy on
+static power whichever way they are arranged: at 0.5 req/s static power is
+54% of the disaggregated cluster's energy (results.md §6). In this model
+the energy comparison at low load still favours disaggregation (Llama-3-70B
+at 2 req/s: 4.190 J per output token disaggregated, 5.100 colocated), so
+the argument against it there is cost and complexity, not joules.
+
+**Alternatives.** Chunked prefill (chapter 4) bounds decode stalls on
+colocated GPUs without moving any KV cache, and is the usual first step.
+Disaggregation is now offered by several serving engines; their designs
+and maturity differ and change quickly, so read their documentation rather
+than a summary: vLLM's
+[disaggregated prefill](https://github.com/vllm-project/vllm/blob/main/docs/features/disagg_prefill.md),
+SGLang's [PD disaggregation](https://docs.sglang.io/docs/advanced_features/pd_disaggregation),
+TensorRT-LLM's [disaggregated serving](https://github.com/NVIDIA/TensorRT-LLM/blob/main/docs/source/features/disagg-serving.md)
+and NVIDIA [Dynamo](https://github.com/ai-dynamo/dynamo).
+
+</Layer>
+
+<TradeoffWidget />
+
+<Layer kind="concept">
+
+**A checklist.** Disaggregate when:
+
+1. decode-tail SLOs (TPOT, ITL) are the binding constraint, and chunked
+   prefill has not fixed them;
+2. prompts are long relative to outputs, so prefills are long stalls;
+3. the KV link has headroom: hand-off bytes × request rate well below its
+   bandwidth (chapter 12's $\lambda_{\text{link}}$), or compression gets
+   it there;
+4. the load is high and steady enough to keep both pools busy, and you
+   can size them (or resize them) to the workload;
+5. the hardware split pays: a cheaper or more power-efficient decode part,
+   or more prefill FLOPs where TTFT matters.
+
+Simulate before you build: the right ratio, link and batch limits depend
+on the prompt and output length distributions and on the SLOs, which is
+the job DistServe gives its simulator, and the job of the one in this
+series.
+
+**Where to go next.**
+
+- The [LLM Inference Simulators](https://github.com/BrendanJamesLynskey/LLM_Hub_Inference_Simulators)
+  series (eleven decks) builds the simulator used here, from the
+  discrete-event kernel to power, hot-spots, validation and acceleration.
+- The [Fourier Optics for Inference](https://github.com/BrendanJamesLynskey/LLM_Hub_Fourier_Optics_Inference)
+  series asks whether optical hardware could serve as a prefill pool or
+  carry the hand-off, and mostly finds that it cannot.
+- The [Simulation Engineering Toolkit](https://brendanjameslynskey.github.io/SimEng_Hub_Toolkit/)
+  covers the engineering around simulators, including
+  [PPA trade-offs](https://brendanjameslynskey.github.io/SimEng_13_PPA_Tradeoffs/)
+  (area, cost and performance per dollar of pools).
+- [Interview_Simulation](https://github.com/BrendanJamesLynskey/Interview_Simulation/blob/main/05_workload_modelling/llm_inference_workloads.md)
+  has questions and worked answers on these chapters' material.
+
+</Layer>
+
+<Layer kind="maths">
+
+For a disaggregated cluster with $n_p$ prefill and $n_d$ decode instances,
+the sustainable request rate is bounded, roughly, by each stage in turn:
+
+$$
+\lambda \le \min\!\left(\frac{n_p}{\bar T_{\text{prefill}}},\
+\frac{n_d \,\bar b}{\bar n_{\text{out}}\,\bar T_{\text{decode}}},\
+\frac{\rho B}{\bar S}\right),
+$$
+
+prefill capacity, decode capacity (mean batch $\bar b$, $\bar n_{\text{out}}$
+output tokens per request, mean step $\bar T_{\text{decode}}$) and link
+capacity. For the 70B defaults the simulator's analytic bounds are
+prefill 7.49 req/s, decode 28.8 and KV link 74.5: prefill is the
+bottleneck, so a second prefill instance, not a second decode instance, is
+what raises the knee.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/components/interactive/TradeoffWidget.tsx (excerpt)
+const { colocated, disagg } = configs({ ...DEFAULT_CONTROLS, model, link });
+for (const r of WORKLOAD_RATES) {
+  out[`c${r}`] = colocated; // two colocated instances
+  out[`d${r}`] = disagg; //   one prefill + one decode instance
+}
+```
+
+Each of the eighteen points is a full 800-request run of the engine on the
+recorded workload for that load.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The simulator's colocated baseline is prefill-first without chunked
+prefill, which is the case most favourable to disaggregation; its power
+coefficients are illustrative.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 05 · [Results from the Python CLI](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-08)
+  and [What to Take Away](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-11);
+  FOptInf 03 · [The Break-Even Point](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-09)
+- Glossary: [Disaggregated (prefill/decode) serving](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-disagg),
+  [Chunked prefill](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-chunked),
+  [Compute in transit](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-computetransit)
+- Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670) (arXiv:2401.09670);
+  Agrawal et al., [Sarathi-Serve](https://arxiv.org/abs/2403.02310) (arXiv:2403.02310)
+- The numbers: [results.md at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
+  sections 4, 6, 8 and 11
+
+</Callout>

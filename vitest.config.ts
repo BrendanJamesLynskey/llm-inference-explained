@@ -42,6 +42,14 @@ export default defineConfig({
           statements: 95,
           branches: 85,
         },
+        // The engine wrapper, hand-off closed forms and simulator presets
+        // (the vendored engine itself is .js, tested by parity, not counted).
+        "src/lib/disagg/**": {
+          lines: 95,
+          functions: 95,
+          statements: 95,
+          branches: 85,
+        },
         lines: 80,
         functions: 80,
         branches: 80,

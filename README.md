@@ -3,7 +3,8 @@
 A graphical, interactive web explainer of how large language models are
 actually served: the generation loop, the KV cache, arithmetic intensity
 and the roofline, batching, paged memory, attention kernels, speculative
-decoding, quantisation, parallelism and serving metrics. Every chapter has a
+decoding, quantisation, parallelism, serving metrics and disaggregated
+prefill and decode, with a live serving simulator. Every chapter has a
 live interactive, and every interactive runs tested code in your browser.
 
 It is the companion to the
@@ -27,7 +28,7 @@ slide series, whose glossary and decks every chapter links into ("Go deeper").
 
 ## What you can do
 
-Ten chapters at `/learn`, each with Concept / Maths / Code layers to toggle:
+Fourteen chapters at `/learn`, each with Concept / Maths / Code layers to toggle:
 
 | #   | Chapter                               | Interactive                                                                                                          |
 | --- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -41,9 +42,10 @@ Ten chapters at `/learn`, each with Concept / Maths / Code layers to toggle:
 | 8   | Quantisation for inference            | Weight and KV formats against bytes per decode step and step time                                                    |
 | 9   | Parallelism                           | Tensor, pipeline and expert parallelism: what each sends, on which link                                              |
 | 10  | Serving metrics                       | TTFT, TPOT, ITL, goodput and Little's law on a simulated run                                                         |
-
-Chapters 11 to 14 (disaggregated serving, with the simulator live in the
-browser) are planned.
+| 11  | Why disaggregate                      | One request stream, colocated and disaggregated: the stalls prefill causes in decode                                 |
+| 12  | Moving the KV cache                   | Hand-off size and time per link; compression; layer-wise streaming                                                   |
+| 13  | A live disaggregated simulator        | The simulator's own engine: pools, devices, links, compression, load and SLOs; presets that reproduce results.md     |
+| 14  | Trade-offs: when not to disaggregate  | A load sweep, colocated against 1P1D, for a small and a large model and three links                                  |
 
 ## Screenshots
 
@@ -75,16 +77,38 @@ Regenerate them with `pnpm build && pnpm start` in one shell and
   except the documented cube-root tolerance in the power-capped branch, and
   also reproduce every row of the simulator's
   [results.md §1](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/main/examples/results.md).
+- **The live simulator** (chapters 11–14) is Disaggregated_Inference_Sim's
+  own JavaScript engine, `web/sim_engine.js`, vendored byte for byte into
+  `src/lib/disagg/vendor/` by `pnpm vendor:sim <commit>`, which records the
+  commit and the file's SHA-256 in `VENDORED.json`. It is pinned at
+  [`38c655e`](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/tree/38c655e39302d159e09c65f00e8aaaa741bdd238).
+  `scripts/disagg_reference.py` runs the Python package at the same commit
+  and writes three things: engine-parity fixtures (13 configurations; every
+  request's six timestamps, every instance's energy counters and the link's
+  must match, bit for bit for 12 of them and to 1e-9 for the one whose power
+  cap takes cube roots, the documented tolerance); the 31 rows of the
+  simulator's
+  [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md)
+  that the chapters quote, each checked against the recorded line; and the
+  recorded workloads in `public/disagg/workloads/` that the browser runs on
+  (Python's generator, recorded: a JavaScript port matches every length but
+  V8's `Math.log` differs from glibc's in the last bit for some inputs). The
+  Playwright suite selects each preset in the browser and checks the cells
+  it shows against the same lines.
 - **Every number quoted in a chapter's prose** is recomputed by
-  `tests/unit/inference/chapterNumbers.test.ts`, which also checks the
+  `tests/unit/inference/chapterNumbers.test.ts` (chapters 1–10) and
+  `tests/unit/disagg/chapterNumbers.test.ts` (11–14), which also check the
   chapter still quotes it.
 - **Illustrative** parts are labelled in the chapter: the simulator's
   derating factors and step overhead, the simplified batching scheduler, the
-  paging allocator, the first-order communication model, and the toy
-  speculative-decoding distributions.
+  paging allocator, the first-order communication model, the toy
+  speculative-decoding distributions, the simulator's power coefficients,
+  the co-packaged-optics link and the optical transform engine (whose
+  block-circulant model is speculative), and layer-wise KV streaming (this
+  site's closed form; the simulator sends the cache after the prefill).
 - Papers are cited by arXiv ID, each checked against arXiv. Claims about
-  serving engines (vLLM, SGLang, TensorRT-LLM) are hedged and linked to their
-  documentation.
+  serving engines (vLLM, SGLang, TensorRT-LLM, Dynamo) are hedged and linked
+  to their documentation.
 
 ## Stack
 
@@ -95,17 +119,21 @@ The same stack as the Transformer Decoder Explainer, minus the backend:
 - **Content** — MDX in `/content/inference`, rendered via
   `next-mdx-remote/rsc`, maths by `remark-math` + `rehype-katex` on the
   server, tables by `remark-gfm`
-- **Maths** — pure TypeScript; `src/lib/transformer/` (vendored) and
-  `src/lib/inference/` (calculators and small simulators)
+- **Maths** — pure TypeScript; `src/lib/transformer/` (vendored),
+  `src/lib/inference/` (calculators and small simulators) and
+  `src/lib/disagg/` (the vendored simulator engine and its wrapper)
 - **Visualisation** — D3 scales with React-rendered SVG
 - **Testing** — Vitest (unit, 100% line coverage on `src/lib/transformer/`,
-  95% on `src/lib/inference/`), Playwright (e2e at 1280 and 390 px, light and
+  95% on `src/lib/inference/` and `src/lib/disagg/`), Playwright (e2e at 1280 and 390 px, light and
   dark, with axe-core accessibility scans)
 - **CI / deploy** — GitHub Actions (lint, typecheck, unit, maths, e2e,
   Lighthouse), Vercel
 
 No database and no sign-in: every page is statically rendered, and each
 chapter's interactive is code-split so a chapter loads only its own widget.
+The simulator interactives (chapters 11, 13, 14) render in the browser only,
+loading the engine and the workload they need when the chapter opens, and
+run the simulations in a Web Worker so the page stays responsive.
 
 ### Design system: where each piece came from
 
@@ -124,7 +152,7 @@ at commit `5c259da`:
 | `scripts/smoke-check.ts`, `scripts/capture-screenshots.ts`, `scripts/verify-maths.ts`, `scripts/reference.py`                                      | adapted / vendored                                                                                              |
 
 `src/components/ui/SiteSwitch.tsx` is the cross-site navigation; the same
-component, with the same classes, is meant for the explainer's header too. A shared npm package for the
+component, with the same classes, is in the explainer's header. A shared npm package for the
 design system would be cleaner in principle, but for two sites it would be
 overkill: copying, and recording where each file came from, is simpler.
 
@@ -164,6 +192,15 @@ To regenerate the cost-model fixtures after a change to the simulator:
 python3 scripts/cost_reference.py ../Disaggregated_Inference_Sim
 ```
 
+To move the live simulator to a new simulator commit (pushed to its origin):
+
+```bash
+pnpm vendor:sim <commit> ../Disaggregated_Inference_Sim
+git -C ../Disaggregated_Inference_Sim checkout <commit>
+../Disaggregated_Inference_Sim/.venv/bin/python scripts/disagg_reference.py ../Disaggregated_Inference_Sim
+pnpm test                  # parity, results.md rows, chapter numbers
+```
+
 ## Deploying
 
 See [`RUNBOOK.md`](RUNBOOK.md): a CLI deploy from a clean `git archive`
@@ -180,10 +217,14 @@ src/components/viz/         Static SVG (landing figure) and the bar chart
 src/lib/transformer/        Vendored transformer + kvcache.ts
 src/lib/inference/          Cost model, KV sizes, batching, paging, kernels,
                             speculative decoding, quantisation, parallelism, metrics
+src/lib/disagg/             Vendored simulator engine (vendor/), its wrapper,
+                            hand-off closed forms, simulator presets, workloads
+public/disagg/workloads/    Recorded workloads the live simulator runs on
 tests/unit/                 Vitest, incl. PyTorch and simulator fixtures
 tests/e2e/                  Playwright + axe-core
 scripts/                    smoke-check, capture-screenshots, verify-maths,
-                            reference.py, cost_reference.py
+                            reference.py, cost_reference.py, vendor-sim-engine.ts,
+                            disagg_reference.py
 ```
 
 ## Credits
@@ -192,8 +233,10 @@ scripts/                    smoke-check, capture-screenshots, verify-maths,
   and its PyTorch fixtures are from
   [transformer-explainer](https://github.com/BrendanJamesLynskey/transformer-explainer)
   (MIT), vendored unchanged at commit `5c259da`.
-- The cost model is ported from
-  [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim).
+- The cost model is ported from, and the simulator engine in
+  `src/lib/disagg/vendor/` is vendored unchanged from,
+  [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim)
+  (same author; its `pyproject.toml` declares "Educational use").
 
 ## References
 
@@ -205,6 +248,7 @@ scripts/                    smoke-check, capture-screenshots, verify-maths,
 - Ainslie et al., 2023 — _[GQA](https://arxiv.org/abs/2305.13245)_; DeepSeek-AI, 2024 — _[DeepSeek-V2](https://arxiv.org/abs/2405.04434)_
 - Shoeybi et al., 2019 — _[Megatron-LM](https://arxiv.org/abs/1909.08053)_
 - Zhong et al., 2024 — _[DistServe](https://arxiv.org/abs/2401.09670)_
+- Patel et al., 2023 — _[Splitwise](https://arxiv.org/abs/2311.18677)_; Hu et al., 2024 — _[Inference without Interference](https://arxiv.org/abs/2401.11181)_; Qin et al., 2024 — _[Mooncake](https://arxiv.org/abs/2407.00079)_
 
 Each chapter lists the rest.
 
@@ -213,8 +257,8 @@ Each chapter lists the rest.
 PRs welcome. CI runs `format:check`, `lint`, `typecheck`, unit tests with
 coverage thresholds, `verify:maths`, e2e on a production build, and
 Lighthouse CI (performance, accessibility and best practices must each
-score at least 90 on `/`, `/learn`, `/learn/02-kv-cache` and
-`/learn/04-batching`).
+score at least 90 on `/`, `/learn`, `/learn/02-kv-cache`,
+`/learn/04-batching` and `/learn/13-live-simulator`).
 
 ## Licence
 

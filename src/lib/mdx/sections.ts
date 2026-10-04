@@ -9,7 +9,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-/** Pedagogical order (brief 07 §3: chapters 1–10). */
+/** Pedagogical order (brief 07 §3–4: chapters 1–10, then 11–14 on disaggregation). */
 export const SECTIONS = [
   {
     slug: "01-generation-loop",
@@ -61,6 +61,28 @@ export const SECTIONS = [
     slug: "10-serving-metrics",
     title: "Serving metrics",
     summary: "TTFT, TPOT, ITL, goodput, tail latency and Little's law.",
+  },
+  {
+    slug: "11-why-disaggregate",
+    title: "Why disaggregate",
+    summary: "Prefill stalls decode on a shared GPU; separate pools stop it.",
+  },
+  {
+    slug: "12-moving-the-kv-cache",
+    title: "Moving the KV cache",
+    summary:
+      "Hand-off size, link bandwidth, streaming, compression, mixed pools.",
+  },
+  {
+    slug: "13-live-simulator",
+    title: "A live disaggregated simulator",
+    summary:
+      "Pools, devices, links, load and SLOs: run the simulator yourself.",
+  },
+  {
+    slug: "14-tradeoffs",
+    title: "Trade-offs: when not to disaggregate",
+    summary: "Small models, low load and slow links, and where to go next.",
   },
 ] as const;
 

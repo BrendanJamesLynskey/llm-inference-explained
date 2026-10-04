@@ -7,16 +7,20 @@ import type { MDXRemoteProps } from "next-mdx-remote/rsc";
 import { Layer } from "@/components/interactive/Layer";
 import {
   BatchingWidget,
+  DisaggSimulatorWidget,
   FlashAttentionWidget,
   GenerationLoopWidget,
+  InterferenceWidget,
   KvCacheWidget,
   KvCalculatorWidget,
+  KvHandoffWidget,
   MetricsWidget,
   PagingWidget,
   ParallelismWidget,
   QuantisationWidget,
   RooflineWidget,
   SpeculativeWidget,
+  TradeoffWidget,
 } from "@/components/interactive/lazy";
 import { Callout } from "@/components/ui/Callout";
 import { MdxTable } from "@/components/ui/MdxTable";
@@ -36,4 +40,8 @@ export const mdxComponents: NonNullable<MDXRemoteProps["components"]> = {
   QuantisationWidget,
   ParallelismWidget,
   MetricsWidget,
+  InterferenceWidget,
+  KvHandoffWidget,
+  DisaggSimulatorWidget,
+  TradeoffWidget,
 };

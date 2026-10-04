@@ -13,7 +13,7 @@ import { DECODER_URL } from "@/lib/site";
 export const metadata = {
   title: "Learn",
   description:
-    "Ten chapters on how real LLM inference works, each with a live interactive.",
+    "Fourteen chapters on how real LLM inference works, each with a live interactive.",
 };
 
 export default function LearnIndex(): JSX.Element {

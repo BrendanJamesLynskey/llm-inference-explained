@@ -34,10 +34,14 @@ VERCEL_BYPASS=… pnpm smoke https://<preview-url>
 ```
 
 It fetches every page and fails on any non-200 (redirects included), on a
-chapter whose server-rendered HTML lacks its title or its interactive, and
-on any KaTeX error. Then open two or three chapters in a browser and use
-their interactives: the widgets run client-side, which the smoke check
-can't see.
+chapter whose server-rendered HTML lacks its title or its interactive (or,
+for the client-only simulator chapters 11, 13 and 14, its marked
+placeholder), and on any KaTeX error. It also fetches the nine recorded
+workloads the live simulator runs on and checks each has 800 rows and the
+vendored engine's commit: 26 checks in all. Then open two or three chapters
+in a browser and use their interactives, including a preset on
+`/learn/13-live-simulator` (every cell should show ✓): the widgets run
+client-side, which the smoke check can't see.
 
 ## 3. Read the logs
 
