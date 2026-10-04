@@ -14,3 +14,8 @@ test-results
 # Generated test fixtures (from scripts/reference.py and scripts/cost_reference.py).
 tests/unit/fixtures/
 .lighthouseci/
+
+# Vendored byte for byte from Disaggregated_Inference_Sim (pnpm vendor:sim),
+# and the recorded workloads (scripts/disagg_reference.py).
+src/lib/disagg/vendor/
+public/disagg/

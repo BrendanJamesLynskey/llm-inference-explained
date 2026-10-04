@@ -58,3 +58,34 @@ export const MetricsWidget = dynamic(
   () => import("./MetricsWidget").then((m) => m.MetricsWidget),
   { loading: Loading },
 );
+export const KvHandoffWidget = dynamic(
+  () => import("./KvHandoffWidget").then((m) => m.KvHandoffWidget),
+  { loading: Loading },
+);
+
+// The disaggregation interactives run Disaggregated_Inference_Sim's engine on
+// workloads fetched at run time, so they render in the browser only: the
+// engine (and each workload) loads with the chapter that needs it. Their
+// server-rendered placeholder is marked, so `pnpm smoke` can find it.
+function Pending({ name }: { name: string }): JSX.Element {
+  return (
+    <div
+      data-pending-widget={name}
+      className="my-8 flex h-48 animate-pulse items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400"
+    >
+      Loading the simulator…
+    </div>
+  );
+}
+export const InterferenceWidget = dynamic(
+  () => import("./InterferenceWidget").then((m) => m.InterferenceWidget),
+  { loading: () => <Pending name="interference" />, ssr: false },
+);
+export const DisaggSimulatorWidget = dynamic(
+  () => import("./DisaggSimulatorWidget").then((m) => m.DisaggSimulatorWidget),
+  { loading: () => <Pending name="disagg-sim" />, ssr: false },
+);
+export const TradeoffWidget = dynamic(
+  () => import("./TradeoffWidget").then((m) => m.TradeoffWidget),
+  { loading: () => <Pending name="tradeoffs" />, ssr: false },
+);

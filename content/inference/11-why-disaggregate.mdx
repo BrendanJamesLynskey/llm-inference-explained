@@ -1,0 +1,145 @@
+<Callout kind="prereq">
+
+[The roofline](/learn/03-roofline) (prefill is compute-bound, decode
+memory-bound), [batching](/learn/04-batching) (continuous batching and
+chunked prefill) and [serving metrics](/learn/10-serving-metrics) (TTFT,
+TPOT, ITL, goodput).
+
+</Callout>
+
+<Layer kind="concept">
+
+Chapters 1–10 ran prefill and decode on the **same GPUs**. That is
+_colocated_ serving, and it has a built-in conflict. Prefill is a long,
+compute-bound step: a 2,048-token prompt keeps Llama-3-70B on four H100s
+busy for about 134 ms. Decode is a short, memory-bound step, about 15 ms,
+that gives every running sequence one more token. When both share a GPU,
+one of them waits for the other:
+
+- if the scheduler runs a waiting prefill first (the vLLM-v0-style policy
+  the simulator's colocated baseline uses), every sequence that is mid-generation **stalls** for the
+  whole prefill, and its next token arrives an order of magnitude late;
+- if it favours decode, new requests wait longer for their first token.
+
+Chunked prefill (chapter 4) bounds the stall by slicing prompts into pieces
+that share each step with decodes. **Disaggregation** removes it: run
+prefill on one pool of GPUs and decode on another, and hand each request's
+KV cache from the first pool to the second. Decode steps then never wait
+for a prefill.
+
+The interactive runs the simulator from the companion
+[Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim)
+repository: two colocated instances against one prefill and one decode
+instance, the same eight H100s, the same 800 requests. At 4 req/s the
+numbers are the simulator's recorded ones (results.md §4): inter-token
+latency at the median is about the same either way (colocated p50 14.1 ms,
+disaggregated 14.4 ms), but the colocated **tail** is where the stalls
+land: p99 188.8 ms and a worst gap of 1,074 ms, against p99 15.2 ms and a
+worst gap of 81.0 ms disaggregated. Disaggregation cuts p99 ITL 12.4x.
+
+</Layer>
+
+<InterferenceWidget />
+
+<Layer kind="concept">
+
+**What you gain.** No interference, so TPOT is steady: at 4 req/s its p99
+falls from 25.9 ms to 15.2 ms and the share of requests meeting both SLOs
+rises from 97.8% to 99.7%. At 6 req/s the gap is wider: 64.7% against
+89.9%. Each pool can also be sized, parallelised and even built from a
+different GPU for its own phase (chapter 12).
+
+**What you pay.** Every prompt's KV cache crosses a link (chapter 12), so
+the link and its queue become a new place for requests to wait. The pools
+must be sized in the right ratio for the workload, and that ratio is wrong
+when the mix of prompt and output lengths shifts. And TTFT can get worse,
+not better: here the colocated cluster spreads prefills over two
+instances, the disaggregated one over one, so TTFT p99 is 630.2 ms
+colocated and 854.2 ms disaggregated. Chapter 14 is about when that trade
+is worth making.
+
+**Energy.** Steady, well-batched decode is efficient: at 4 req/s the
+disaggregated cluster draws 2,687 W on average against 2,993 W colocated,
+2.77 J per output token against 3.09 (the simulator's illustrative power
+model, chapter 3).
+
+**Where the idea came from.** Splitwise (Patel et al., 2023) characterised
+production traces and argued for separate prompt and token machine pools,
+even on different GPU generations. DistServe (Zhong et al., 2024) framed
+the goal as **goodput**: the highest request rate served within both the
+TTFT and TPOT SLOs, and searched pool placements with a simulator.
+TetriInfer (Hu et al., 2024) separates the phases for mixed workloads, and
+Mooncake (Qin et al., 2024) builds a whole serving system around the KV
+cache as an object that is stored, moved and reused across a cluster.
+
+</Layer>
+
+<Layer kind="maths">
+
+A colocated instance alternates prefill steps of length $T_p$ with decode
+steps of length $T_d$. A running sequence's token gap is $T_d$ when no
+prompt is waiting and $T_d + T_p$ (or more, if prompts queue) when one is:
+with $T_p \approx 134$ ms and $T_d \approx 15$ ms, roughly ten times
+longer. The fraction of gaps that suffer depends on how often prompts
+arrive, so the median barely moves while the tail grows with the load.
+
+In the simulator, for request $r$ with first token at $\tau_{r,1}$ and
+its KV cache landing on the decode pool at $\kappa_r$:
+
+$$
+\text{TTFT}_r = \tau_{r,1} - a_r,\qquad
+\text{hand-off}_r = \kappa_r - \tau_{r,1},\qquad
+\text{TPOT}_r = \frac{\tau_{r,n_r} - \tau_{r,1}}{n_r - 1}.
+$$
+
+The first token leaves the prefill pool **before** the KV transfer starts,
+so the hand-off is part of TPOT (DistServe's definition), not of TTFT.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/disagg/engine.ts (excerpt): the simulator's own engine, vendored
+import "./vendor/sim_engine.js"; // Disaggregated_Inference_Sim web/sim_engine.js
+
+export const engine = (globalThis as unknown as { DisaggSim: Engine })
+  .DisaggSim;
+
+export function run(cfg: SimConfig, rows: Row[]): Metrics {
+  return metricsOf(engine.simulate(cfg, rows));
+}
+```
+
+`scripts/vendor-sim-engine.ts` copies the engine byte for byte from a
+pinned commit and records its SHA-256; `scripts/disagg_reference.py` runs
+the Python package at the same commit, and the unit tests require every
+request's timestamps to match.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The simulator's derating factors, step overhead and power coefficients are
+illustrative (chapter 3), and its colocated baseline is a
+prefill-first scheduler without chunked prefill. Its TTFT/TPOT trade is
+the mechanism, not a prediction for any one serving engine.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 05 · [The Interference Problem](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-01),
+  [The Idea: Split the Phases](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-02)
+  and [Disaggregation in Production](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-03)
+- Glossary: [Prefill–decode interference](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-interference),
+  [Disaggregated (prefill/decode) serving](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-disagg),
+  [Goodput and SLO attainment](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-goodput)
+- Patel et al., [Splitwise](https://arxiv.org/abs/2311.18677) (arXiv:2311.18677);
+  Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670) (arXiv:2401.09670);
+  Hu et al., [Inference without Interference](https://arxiv.org/abs/2401.11181) (TetriInfer, arXiv:2401.11181);
+  Qin et al., [Mooncake](https://arxiv.org/abs/2407.00079) (arXiv:2407.00079)
+- The numbers: [results.md at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
+  sections 3 and 4
+
+</Callout>

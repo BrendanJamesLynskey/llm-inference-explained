@@ -1,0 +1,153 @@
+<Callout kind="prereq">
+
+[Why disaggregate](/learn/11-why-disaggregate) and
+[moving the KV cache](/learn/12-moving-the-kv-cache); the metrics are those
+of [chapter 10](/learn/10-serving-metrics).
+
+</Callout>
+
+<Layer kind="concept">
+
+This chapter hands you the simulator. It is the JavaScript engine of
+[Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim),
+a discrete-event simulator of prefill/decode-disaggregated serving, copied
+byte for byte from a pinned commit. Its Python original is the source of
+every number in the InfSim and FOptInf decks; this copy is tested against
+it **request by request**: for thirteen configurations, every request's
+six timestamps (prefill start, first token, link granted, KV landed,
+decode start, finish) and every instance's energy counters must be
+identical to Python's, and twelve of the thirteen are, bit for bit. The
+thirteenth throttles steps under a hard power cap, which solves a cubic
+with cube roots that can differ in the last bit between maths libraries;
+it agrees to within 2.2e-16, relatively (the test allows 1e-9, as the
+simulator's own tests do).
+
+What it models, per instance:
+
+- **prefill pool**: first come, first served, up to 8,192 prompt tokens per
+  step; the first token is emitted when the prompt's prefill step ends;
+- **KV link**: one queue, first come, first served; the transfer starts
+  after the whole prefill and takes latency + bytes ÷ bandwidth;
+- **decode pool**: continuous batching up to 256 sequences, admitted only
+  if their whole KV cache (prompt + output) fits in memory;
+- **colocated baseline**: the same GPUs running both phases, a waiting
+  prefill before the next decode step;
+- every step costs the roofline time of chapter 3, plus a power model
+  (chapter 3's illustrative coefficients).
+
+Because the first token leaves the prefill pool **before** the KV transfer,
+a slow or busy link never shows up in TTFT: look at the **hand-off p99**
+and at **TPOT**, which counts the wait for the cache.
+
+The workloads are the ones the simulator's results were recorded with:
+800 Poisson arrivals with seed 1, prompts of about 2,048 tokens and outputs
+of about 256 (log-normal, coefficient of variation 0.5). They are recorded
+files, not regenerated here: a JavaScript port of Python's random number
+generator reproduces every length, but V8's logarithm differs from the C
+library's in the last bit for some inputs, which shifts arrival times by
+one unit in the last place, and the engine is exact enough to notice.
+
+Pick a **preset** and the widget reproduces a row of the simulator's
+`results.md`, checking each cell against the recorded value (a ✓ per
+cell). Then change anything: pools, devices, link, compression, load or
+SLOs. Every change reruns both clusters.
+
+</Layer>
+
+<DisaggSimulatorWidget />
+
+<Layer kind="concept">
+
+**Things to try.**
+
+- _Defaults, 4 req/s, then 8 req/s._ One prefill instance can sustain
+  about 7.49 req/s of these prompts (the simulator's analytic bound), so
+  at 8 req/s prompts queue: TTFT p99 jumps to 6,085 ms and only 21.0% of
+  requests meet both SLOs. Add a second prefill instance and watch it
+  recover.
+- _25 GbE at 14 req/s._ The hot-spot moves to the KV link (94.0% busy).
+  TTFT is unaffected; hand-off p99 and TPOT are not. Then switch on FP8
+  compression in transit, or at the GPU.
+- _H100 prefill + A100 decode._ TPOT p99 roughly doubles but stays inside
+  the SLO, and energy per token falls.
+- _An optical prefill pool._ The FOptInf series asked whether a
+  Fourier-optical transform engine could serve as a prefill pool. For
+  attention models it has no work to do. For the most transform-heavy
+  (and speculative) model, a Hyena-2 variant with block-circulant weights
+  and a last-token output head, the optimistic engine gives a TTFT p99 of
+  90.5 ms against 5.4 ms for a plain H100 prefill pool, at 0.194 J per
+  token against 0.185. Every coefficient of the engine is illustrative;
+  the series' verdict is that it does not pay.
+
+</Layer>
+
+<Layer kind="maths">
+
+The engine is a discrete-event simulation: a priority queue of
+$(t, \text{seq}, \text{action})$ events, popped in time order (ties in
+insertion order, as SimPy does). Each step's duration is the cost model's
+
+$$
+T_{\text{step}} = \max\!\left(\frac{F}{\eta_F F_{\text{peak}} n},\ \frac{B}{\eta_B B_{\text{peak}} n}\right) + T_0,
+$$
+
+lengthened if its power would exceed the cap. The reported metrics are
+computed over requests after the first 10% (warm-up), with
+linearly interpolated percentiles (chapter 10); goodput counts requests
+meeting both SLOs per second of arrivals.
+
+Hand-off for request $r$: $\kappa_r - \tau_{r,1}$, from its first token to
+its KV cache landing on the decode pool, the link queue included.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/disagg/simulator.ts (excerpt): one set of controls, two clusters
+const disagg: SimConfig = {
+  ...base,
+  prefillDevice: optical ? "optical-fft" : c.prefillDevice,
+  decodeDevice: c.decodeDevice,
+  ...(c.compression !== "none"
+    ? { kvCompress: c.compression, kvCompressAt: c.compressAt }
+    : {}),
+};
+const colocated: SimConfig = {
+  ...base,
+  mode: "colocated",
+  device: colocatedDevice(c),
+};
+```
+
+Each preset's expected cells are checked twice: in the unit tests, against
+a fixture written by the Python package at the vendored commit, and in the
+browser tests, against what this widget displays.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The optical transform engine (passes, mask rewrite rate, converter energy,
+static laser power), the block-circulant model, the co-packaged-optics
+link and the power coefficients are illustrative. The simulator treats a
+tensor-parallel group as one larger device with no all-reduce cost and
+does not model layer-wise streaming, preemption or prefix caching.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 05 · [The Simulator: Model and Assumptions](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-05),
+  [Six Experiments to Try](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-07)
+  and [Limitations and Extensions](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-10)
+- FOptInf 03 · [Optical Prefill Against All-GPU Baselines](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-05)
+  and [What This Does Not Show](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-15)
+- Glossary: [Discrete-event simulation](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-des),
+  [Hot-spot attribution](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-hotspot),
+  [Break-even point](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-breakeven)
+- The engine: [web/sim_engine.js at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/web/sim_engine.js);
+  the numbers: [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
+  sections 4, 8, 10, 11 and 15
+
+</Callout>

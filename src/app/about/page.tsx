@@ -58,6 +58,16 @@ export default function AboutPage(): JSX.Element {
             Python package writes, and against its recorded results.
           </li>
           <li>
+            <strong>The live simulator</strong> in chapters 11&ndash;14 is
+            Disaggregated_Inference_Sim&rsquo;s own JavaScript engine, copied
+            byte for byte from a pinned commit by a script that records the
+            commit and the file&rsquo;s SHA-256. CI runs it against fixtures the
+            Python package writes at the same commit (every request&rsquo;s
+            timestamps must match) and against the rows of its{" "}
+            <code>results.md</code> that the chapters quote. Its workloads are
+            the ones Python recorded.
+          </li>
+          <li>
             <strong>Everything else</strong> (batching, paging, kernels,
             speculative decoding, parallelism, metrics) is small, tested code in{" "}
             <code>src/lib/inference/</code>. Where a model is simplified or a

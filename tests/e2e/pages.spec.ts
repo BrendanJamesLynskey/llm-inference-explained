@@ -132,9 +132,11 @@ test("the cross-site switch links both sites, this one current", async ({
   );
 });
 
-test("the learn index lists all ten chapters", async ({ page }) => {
+test("the learn index lists every chapter", async ({ page }) => {
   await page.goto("/learn");
   for (const s of SECTIONS) {
-    await expect(page.getByRole("link", { name: s.title })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: s.title, exact: true }),
+    ).toBeVisible();
   }
 });

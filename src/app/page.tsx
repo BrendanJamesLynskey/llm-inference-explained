@@ -9,7 +9,7 @@ const ENTRY_POINTS = [
     href: "/learn",
     title: "Chapters",
     blurb:
-      "Ten chapters, from the generation loop to serving metrics. Toggle the Concept, Maths and Code layers to choose your depth.",
+      "Fourteen chapters, from the generation loop to disaggregated serving. Toggle the Concept, Maths and Code layers to choose your depth.",
     cta: "See the chapters →",
   },
   {
@@ -55,8 +55,9 @@ export default function HomePage(): JSX.Element {
             that pass thousands of times a second for many users at once. These
             chapters cover what real inference systems do about it: the KV
             cache, the roofline, batching, paged memory, FlashAttention,
-            speculative decoding, quantisation, parallelism and the metrics that
-            judge them. Every interactive runs tested code in your browser.
+            speculative decoding, quantisation, parallelism, the metrics that
+            judge them, and disaggregated prefill and decode, with a live
+            simulator. Every interactive runs tested code in your browser.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link

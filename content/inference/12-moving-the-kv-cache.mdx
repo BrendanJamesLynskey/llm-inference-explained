@@ -1,0 +1,169 @@
+<Callout kind="prereq">
+
+[The KV cache](/learn/02-kv-cache) (bytes per token) and
+[why disaggregate](/learn/11-why-disaggregate) (the hand-off between the
+pools).
+
+</Callout>
+
+<Layer kind="concept">
+
+Disaggregation turns the KV cache into **cargo**. When a prompt finishes
+prefill, its cache (every layer's keys and values for every prompt token)
+must reach the decode pool before the request can generate its second
+token. The size is simple arithmetic: prompt tokens × KV bytes per token.
+Llama-3-8B with grouped-query attention stores 128 KiB per token in BF16,
+so a 2,048-token prompt hands off **268.4 MB**; Llama-3-70B stores 320 KiB
+per token, **671.1 MB**.
+
+The time to move it is the link's latency plus bytes ÷ bandwidth. The
+simulator's link table (bandwidth per direction):
+
+| Link                              | Bandwidth  | 268.4 MB takes |
+| --------------------------------- | ---------- | -------------- |
+| NVLink 4                          | 450 GB/s   | 0.6 ms         |
+| Co-packaged optics (illustrative) | 200 GB/s   | 1.3 ms         |
+| InfiniBand NDR 400G               | 50 GB/s    | 5.4 ms         |
+| 100 GbE                           | 12.5 GB/s  | 21.5 ms        |
+| 25 GbE                            | 3.125 GB/s | 85.9 ms        |
+
+Set that against the prefill that produced the cache, 59.0 ms for this
+prompt on one H100. On NVLink or InfiniBand the transfer is a few percent
+of it; on 25 GbE it is longer than the prefill itself, and the link can
+carry at most **11.6 hand-offs per second** of this size before it is
+full. Past that point requests queue for the link, and queueing, not
+transfer, dominates.
+
+**Where it shows.** In the simulator the first token is emitted by the
+prefill pool **before** the KV transfer starts, so the hand-off never
+appears in TTFT. It shows in the **hand-off latency** (first token → KV
+landed on the decode pool) and therefore in **TPOT**, which counts every
+gap after the first token (DistServe's definition). Across the five links
+at 8 req/s (results.md §14), TTFT p99 is 353.6 ms on every one of them,
+while TPOT p99 rises from 8.8 ms on InfiniBand to 11.6 ms on 25 GbE, whose
+link is busy 64.4% of the time.
+
+Three ways to make the cargo cheaper, all in the interactive:
+
+- **Stream it layer by layer.** Layer $l$'s keys and values are final as
+  soon as layer $l$'s prefill finishes, so they can leave while the
+  remaining layers compute (Mooncake's layer-wise prefill streams each
+  layer's cache to the decode node this way). When the link keeps up, only the last layer's slice is
+  left after the prefill ends. The companion simulator does not model
+  this: it sends after the whole prefill, the pessimistic bound.
+- **Compress it.** FP8 halves the bytes; 4-bit values with a shared scale
+  per block of 16 cut them by 64/17 = 3.76×. Independent work reports that KV caches
+  tolerate much lower precision (KIVI quantises them to 2 bits); the
+  simulator models the bytes and the compute, not the accuracy.
+- **Use a faster link**, or put prefill and decode in the same NVLink
+  domain.
+
+</Layer>
+
+<KvHandoffWidget />
+
+<Layer kind="concept">
+
+**Compression where the link is the bottleneck.** On 25 GbE at 14 req/s
+the uncompressed link is 94.0% busy and the hand-off p99 reaches
+9,657.8 ms; TPOT p99 is 77.2 ms and only 41.0% of requests meet their
+SLOs. Compressing the hand-off to FP8 drops the link to 53.7% busy, the
+hand-off p99 to 166.6 ms, TPOT p99 to 11.5 ms, and SLO attainment to
+100.0% (results.md §15). On a link with headroom (InfiniBand at
+8 req/s) the same compression changes TPOT p99 not at all: 8.8 ms either
+way. Compression is a fix for a saturated link, not a free speed-up.
+
+**Heterogeneous pools.** Because the phases are separate, each pool can use
+the hardware that suits it: Splitwise's observation. Prefill wants FLOPs;
+decode wants memory bandwidth and capacity per dollar. With Llama-3-8B at
+8 req/s (results.md §10), moving decode from an H100 to an A100 leaves TTFT
+p99 at 353.6 ms, raises TPOT p99 from 8.8 ms to 16.8 ms (still inside the
+25 ms SLO, 100.0% met), and lowers energy from 0.326 to 0.299 J per output
+token. The reverse placement fails: an A100 prefill pool cannot keep up
+with 8 req/s, so prompts queue and TTFT p99 grows to 47.1 s; two A100
+prefill instances bring it back to 1,093.5 ms, with 96.9% of SLOs met.
+Try these as presets in the [live simulator](/learn/13-live-simulator).
+
+**Photonic links.** The co-packaged-optics row is an **illustrative**
+photonic interconnect (round numbers: 200 GB/s, 5 µs, 3 pJ/bit), not a
+product and not Fourier optics. Its effect in the simulator is energy, not
+latency: 0.006 J of link energy per request against 0.032 J on InfiniBand,
+with the same TPOT p99 of 8.8 ms.
+
+</Layer>
+
+<Layer kind="maths">
+
+For a prompt of $P$ tokens, $L$ layers, $h_{kv}$ KV heads of size $d_h$
+and $b$ bytes per value, compressed by a ratio $\rho$ and sent over a link
+of bandwidth $B$ and latency $\ell$:
+
+$$
+S = 2\,L\,h_{kv}\,d_h\,b\,P,\qquad
+T_x = \ell + \frac{S}{\rho B},\qquad
+\lambda_{\text{link}} = \frac{\rho B}{S}.
+$$
+
+Llama-3-8B: $2 \cdot 32 \cdot 8 \cdot 128 \cdot 2 = 131{,}072$ bytes per
+token. $\lambda_{\text{link}}$ is the request rate at which hand-offs alone
+fill the link; above it the link queue grows without bound.
+
+Layer-wise streaming: if each of the $L$ layers takes $T_p/L$ of the
+prefill and its slice takes $T_x'/L$ to send (with $T_x' = S/\rho B$),
+the last slice lands at
+$\max(T_p + T_x'/L,\; T_p/L + T_x')$, so the time left after the prefill is
+
+$$
+T_{\text{exposed}} = \ell + \max\!\left(\frac{T_x'}{L},\; T_x' - \frac{L-1}{L}\,T_p\right).
+$$
+
+Llama-3-8B over 25 GbE: $T_x' = 85.9$ ms, $T_p = 59.0$ ms, so streaming
+leaves 28.7 ms exposed instead of 85.9 ms; with FP8 as well, 1.36 ms.
+
+</Layer>
+
+<Layer kind="code">
+
+```ts
+// src/lib/disagg/handoff.ts (excerpt)
+const bytes = x.prompt * kvBytesPerToken(x.model);
+const wireBytes = bytes / COMPRESSION[x.compression];
+const wire = wireBytes / link.bandwidth;
+const transferTime = link.latency + wire;
+const exposedTime = x.layerwise
+  ? link.latency + Math.max(wire / L, wire - (prefillTime * (L - 1)) / L)
+  : transferTime;
+```
+
+The bytes per token, the link table and the prefill step are the
+simulator's (`hardware.py`), ported and tested against it in chapter 3;
+the layer-wise formula is this site's, tested against its closed form.
+
+</Layer>
+
+<Callout kind="illustrative">
+
+The co-packaged-optics link, the simulator's power coefficients and the
+compression presets' costs are illustrative. Layer-wise streaming assumes
+equal layers and a link that carries one slice at a time.
+
+</Callout>
+
+<Callout kind="deeper">
+
+- InfSim 05 · [What the KV Transfer Costs](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-04);
+  FOptInf 03 · [Heterogeneous Pools: H100 Prefill, A100 Decode](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-04),
+  [The KV Hand-off: Link and Payload](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-11)
+  and [Compressing the Hand-off: In Transit or at the GPU](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-13)
+- Glossary: [KV-cache transfer](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-kvtransfer),
+  [Prefill-to-decode hand-off](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-handoff),
+  [Heterogeneous pools](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-hetpool),
+  [Photonic interconnect](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-photoniclink)
+- Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670) (arXiv:2401.09670);
+  Qin et al., [Mooncake](https://arxiv.org/abs/2407.00079) (arXiv:2407.00079);
+  Patel et al., [Splitwise](https://arxiv.org/abs/2311.18677) (arXiv:2311.18677);
+  Liu et al., [KIVI](https://arxiv.org/abs/2402.02750) (arXiv:2402.02750)
+- The numbers: [results.md at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
+  sections 10, 14 and 15
+
+</Callout>

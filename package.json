@@ -27,7 +27,8 @@
     "lighthouse": "lhci autorun",
     "verify:maths": "tsx scripts/verify-maths.ts",
     "screenshots": "tsx scripts/capture-screenshots.ts",
-    "smoke": "tsx scripts/smoke-check.ts"
+    "smoke": "tsx scripts/smoke-check.ts",
+    "vendor:sim": "tsx scripts/vendor-sim-engine.ts"
   },
   "dependencies": {
     "d3": "^7.9.0",

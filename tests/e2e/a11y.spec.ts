@@ -13,6 +13,8 @@ const PAGES = [
   "/learn/03-roofline",
   "/learn/04-batching",
   "/learn/07-speculative-decoding",
+  "/learn/12-moving-the-kv-cache",
+  "/learn/13-live-simulator",
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {
@@ -24,6 +26,10 @@ for (const scheme of ["light", "dark"] as const) {
       }) => {
         await page.goto(path);
         await page.waitForLoadState("networkidle");
+        if (path.includes("13-live"))
+          await page
+            .locator('[data-cell="disagg.ttft_p99"]')
+            .waitFor({ timeout: 20_000 });
         const results = await new AxeBuilder({ page })
           .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
           .analyze();
