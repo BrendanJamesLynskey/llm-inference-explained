@@ -1,5 +1,5 @@
 /**
- * Site-wide constants: this site's URL, its companion site, and the
+ * Site-wide constants: this site's URL, its companion sites, and the
  * external series the chapters link into.
  */
 
@@ -8,6 +8,10 @@ export const SITE_URL = "https://llm-inference-explained.vercel.app";
 
 /** The companion Transformer Decoder Explainer. */
 export const DECODER_URL = "https://transformer-decoder-explained.vercel.app";
+
+/** The companion LLM Architectures Explained. */
+export const ARCHITECTURES_URL =
+  "https://llm-architectures-explained.vercel.app";
 
 export const GITHUB_URL =
   "https://github.com/BrendanJamesLynskey/llm-inference-explained";

@@ -117,7 +117,7 @@ test("the layer toggle shows the maths layer", async ({ page }) => {
   ).toBeGreaterThan(3);
 });
 
-test("the cross-site switch links both sites, this one current", async ({
+test("the cross-site switch links all three sites, this one current", async ({
   page,
 }) => {
   await page.goto("/");
@@ -126,6 +126,9 @@ test("the cross-site switch links both sites, this one current", async ({
     "href",
     "https://transformer-decoder-explained.vercel.app",
   );
+  await expect(
+    nav.getByRole("link", { name: "Architectures" }),
+  ).toHaveAttribute("href", "https://llm-architectures-explained.vercel.app");
   await expect(nav.getByRole("link", { name: "Inference" })).toHaveAttribute(
     "aria-current",
     "true",

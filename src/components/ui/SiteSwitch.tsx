@@ -1,7 +1,8 @@
 /**
- * Cross-site navigation between the two companion sites: the Transformer
- * Decoder Explainer and LLM Inference Explained. The same component, with
- * the same classes, sits in both sites' headers; only `current` differs.
+ * Cross-site navigation between the three companion sites: the Transformer
+ * Decoder Explainer, LLM Inference Explained and LLM Architectures
+ * Explained. The same component, with the same classes, sits in all three
+ * sites' headers; only `current` differs.
  *
  * Server Component (plain links, no state).
  */
@@ -18,6 +19,12 @@ const SITES = [
     label: "Inference",
     href: "https://llm-inference-explained.vercel.app",
     title: "LLM Inference Explained: how real systems generate text",
+  },
+  {
+    key: "architectures",
+    label: "Architectures",
+    href: "https://llm-architectures-explained.vercel.app",
+    title: "LLM Architectures Explained: how model designs differ",
   },
 ] as const;
 

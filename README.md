@@ -11,8 +11,11 @@ It is the companion to the
 [Transformer Decoder Explainer](https://transformer-decoder-explained.vercel.app/),
 which shows what happens inside one forward pass. This site picks up where
 that one stops: what it takes to run that pass token after token, fast,
-for many users at once. The two sites share one design system and link to
-each other from the header ("Decoder · Inference").
+for many users at once. The third site,
+[LLM Architectures Explained](https://llm-architectures-explained.vercel.app/),
+shows how real models' designs differ. The three sites share one design
+system and link to each other from the header ("Decoder · Inference ·
+Architectures").
 
 **Live:** [llm-inference-explained.vercel.app](https://llm-inference-explained.vercel.app/)
 
@@ -152,9 +155,11 @@ at commit `5c259da`:
 | `scripts/smoke-check.ts`, `scripts/capture-screenshots.ts`, `scripts/verify-maths.ts`, `scripts/reference.py`                                      | adapted / vendored                                                                                              |
 
 `src/components/ui/SiteSwitch.tsx` is the cross-site navigation; the same
-component, with the same classes, is in the explainer's header. A shared npm package for the
-design system would be cleaner in principle, but for two sites it would be
-overkill: copying, and recording where each file came from, is simpler.
+component, with the same classes, is in the explainer's and LLM
+Architectures Explained's headers (only `current` differs). A shared npm
+package for the design system would be cleaner in principle, but for three
+small sites it would be overkill: copying, and recording where each file
+came from, is simpler.
 
 ## Local development
 
