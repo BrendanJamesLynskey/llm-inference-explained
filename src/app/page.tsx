@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { HeroFlopsSvg } from "@/components/viz/HeroFlopsSvg";
 import { heroPreview } from "@/lib/inference/heroPreview";
-import { DECODER_URL } from "@/lib/site";
+import { ARCHITECTURES_URL, DECODER_URL } from "@/lib/site";
 
 const ENTRY_POINTS = [
   {
@@ -115,14 +115,22 @@ export default function HomePage(): JSX.Element {
       </nav>
 
       <p className="mt-12 text-sm text-neutral-600 dark:text-neutral-400">
-        The companion site, the{" "}
+        The companion sites: the{" "}
         <a
           href={DECODER_URL}
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
         >
           Transformer Decoder Explainer
-        </a>
-        , walks through the forward pass itself. The source of this one is on{" "}
+        </a>{" "}
+        walks through the forward pass itself, and{" "}
+        <a
+          href={ARCHITECTURES_URL}
+          className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
+        >
+          LLM Architectures Explained
+        </a>{" "}
+        shows how real models&rsquo; designs differ. The source of this one is
+        on{" "}
         <a
           href="https://github.com/BrendanJamesLynskey/llm-inference-explained"
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
