@@ -17,7 +17,8 @@ shows how real models' designs differ, and the fourth,
 [GPU Kernels Explained](https://gpu-kernels-explained.vercel.app/), shows how
 a GPU executes the maths. The sites share one design system and link to each
 other from the header ("Decoder · Inference · Architectures · Kernels ·
-Numerics · Silicon"; the last two are coming).
+Numerics · Silicon"; the last is coming). [Numerics Explained](https://numerics-explained.vercel.app/)
+covers number formats and quantisation.
 
 **Live:** [llm-inference-explained.vercel.app](https://llm-inference-explained.vercel.app/)
 
