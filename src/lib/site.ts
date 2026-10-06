@@ -13,6 +13,9 @@ export const DECODER_URL = "https://transformer-decoder-explained.vercel.app";
 export const ARCHITECTURES_URL =
   "https://llm-architectures-explained.vercel.app";
 
+/** The companion GPU Kernels Explained. */
+export const KERNELS_URL = "https://gpu-kernels-explained.vercel.app";
+
 export const GITHUB_URL =
   "https://github.com/BrendanJamesLynskey/llm-inference-explained";
 
