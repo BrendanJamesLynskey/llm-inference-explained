@@ -127,8 +127,12 @@ test("the six-way site switch links every live site, this one current", async ({
     "href",
     "https://gpu-kernels-explained.vercel.app",
   );
-  await expect(nav.getByText("Numerics")).toBeVisible();
-  await expect(nav.getByRole("link", { name: /Numerics/ })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Numerics" })).toHaveAttribute(
+    "href",
+    "https://numerics-explained.vercel.app",
+  );
+  await expect(nav.getByText("Silicon")).toBeVisible();
+  await expect(nav.getByRole("link", { name: /Silicon/ })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Decoder" })).toHaveAttribute(
     "href",
     "https://transformer-decoder-explained.vercel.app",

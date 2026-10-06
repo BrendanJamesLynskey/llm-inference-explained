@@ -2,7 +2,12 @@ import Link from "next/link";
 
 import { HeroFlopsSvg } from "@/components/viz/HeroFlopsSvg";
 import { heroPreview } from "@/lib/inference/heroPreview";
-import { ARCHITECTURES_URL, DECODER_URL, KERNELS_URL } from "@/lib/site";
+import {
+  ARCHITECTURES_URL,
+  DECODER_URL,
+  KERNELS_URL,
+  NUMERICS_URL,
+} from "@/lib/site";
 
 const ENTRY_POINTS = [
   {
@@ -129,14 +134,22 @@ export default function HomePage(): JSX.Element {
         >
           LLM Architectures Explained
         </a>{" "}
-        shows how real models&rsquo; designs differ, and{" "}
+        shows how real models&rsquo; designs differ,{" "}
         <a
           href={KERNELS_URL}
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
         >
           GPU Kernels Explained
         </a>{" "}
-        shows how a GPU executes the maths. The source of this one is on{" "}
+        shows how a GPU executes the maths, and{" "}
+        <a
+          href={NUMERICS_URL}
+          className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
+        >
+          Numerics Explained
+        </a>{" "}
+        shows the number formats and quantisation behind it. The source of this
+        one is on{" "}
         <a
           href="https://github.com/BrendanJamesLynskey/llm-inference-explained"
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"

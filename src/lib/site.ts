@@ -15,6 +15,7 @@ export const ARCHITECTURES_URL =
 
 /** The companion GPU Kernels Explained. */
 export const KERNELS_URL = "https://gpu-kernels-explained.vercel.app";
+export const NUMERICS_URL = "https://numerics-explained.vercel.app";
 
 export const GITHUB_URL =
   "https://github.com/BrendanJamesLynskey/llm-inference-explained";
