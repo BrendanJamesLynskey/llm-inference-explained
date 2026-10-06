@@ -117,11 +117,18 @@ test("the layer toggle shows the maths layer", async ({ page }) => {
   ).toBeGreaterThan(3);
 });
 
-test("the cross-site switch links all three sites, this one current", async ({
+test("the six-way site switch links every live site, this one current", async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Companion sites" });
+  await expect(nav.getByRole("link", { name: "Kernels" })).toHaveAttribute(
+    "href",
+    "https://gpu-kernels-explained.vercel.app",
+  );
+  await expect(nav.getByText("Numerics")).toBeVisible();
+  await expect(nav.getByRole("link", { name: /Numerics/ })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Decoder" })).toHaveAttribute(
     "href",
     "https://transformer-decoder-explained.vercel.app",
@@ -142,4 +149,22 @@ test("the learn index lists every chapter", async ({ page }) => {
       page.getByRole("link", { name: s.title, exact: true }),
     ).toBeVisible();
   }
+});
+
+test("the site switch is a dropdown on phones", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("/");
+  const compact = page.locator("[data-site-switch='compact']");
+  await expect(compact).toBeVisible();
+  await compact.locator("summary").click();
+  const kernels = compact.getByRole("link", { name: "Kernels" });
+  await expect(kernels).toBeVisible();
+  const box = await kernels.boundingBox();
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  const overflow = await page.evaluate(
+    () =>
+      document.scrollingElement!.scrollWidth -
+      document.scrollingElement!.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });

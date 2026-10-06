@@ -13,9 +13,11 @@ which shows what happens inside one forward pass. This site picks up where
 that one stops: what it takes to run that pass token after token, fast,
 for many users at once. The third site,
 [LLM Architectures Explained](https://llm-architectures-explained.vercel.app/),
-shows how real models' designs differ. The three sites share one design
-system and link to each other from the header ("Decoder · Inference ·
-Architectures").
+shows how real models' designs differ, and the fourth,
+[GPU Kernels Explained](https://gpu-kernels-explained.vercel.app/), shows how
+a GPU executes the maths. The sites share one design system and link to each
+other from the header ("Decoder · Inference · Architectures · Kernels ·
+Numerics · Silicon"; the last two are coming).
 
 **Live:** [llm-inference-explained.vercel.app](https://llm-inference-explained.vercel.app/)
 
