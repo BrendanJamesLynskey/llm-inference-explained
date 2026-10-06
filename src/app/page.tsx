@@ -7,6 +7,7 @@ import {
   DECODER_URL,
   KERNELS_URL,
   NUMERICS_URL,
+  SILICON_URL,
 } from "@/lib/site";
 
 const ENTRY_POINTS = [
@@ -141,15 +142,21 @@ export default function HomePage(): JSX.Element {
         >
           GPU Kernels Explained
         </a>{" "}
-        shows how a GPU executes the maths, and{" "}
+        shows how a GPU executes the maths,{" "}
         <a
           href={NUMERICS_URL}
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
         >
           Numerics Explained
         </a>{" "}
-        shows the number formats and quantisation behind it. The source of this
-        one is on{" "}
+        shows the number formats and quantisation behind it, and{" "}
+        <a
+          href={SILICON_URL}
+          className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
+        >
+          Systolic Arrays Explained
+        </a>{" "}
+        shows the matrix hardware of TPUs. The source of this one is on{" "}
         <a
           href="https://github.com/BrendanJamesLynskey/llm-inference-explained"
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
