@@ -17,10 +17,13 @@ shows how real models' designs differ, and the fourth,
 [GPU Kernels Explained](https://gpu-kernels-explained.vercel.app/), shows how
 a GPU executes the maths. The sites share one design system and link to each
 other from the header ("Decoder · Inference · Architectures · Kernels ·
-Numerics · Silicon"). [Numerics Explained](https://numerics-explained.vercel.app/)
+Numerics · Silicon · Trade-offs"). [Numerics Explained](https://numerics-explained.vercel.app/)
 covers number formats and quantisation, and
 [Systolic Arrays Explained](https://systolic-arrays-explained.vercel.app/)
 the matrix hardware (chapter 9 links its torus all-reduce).
+[Inference Trade-offs Explained](https://inference-tradeoffs-explained.vercel.app/)
+takes chapter 14's question to every serving lever, measured on five
+workloads (chapters 4, 5, 7, 8, 9, 11, 12 and 14 link its chapters).
 
 **Live:** [llm-inference-explained.vercel.app](https://llm-inference-explained.vercel.app/)
 

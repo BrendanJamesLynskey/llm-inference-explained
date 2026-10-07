@@ -17,6 +17,7 @@ export const ARCHITECTURES_URL =
 export const KERNELS_URL = "https://gpu-kernels-explained.vercel.app";
 export const NUMERICS_URL = "https://numerics-explained.vercel.app";
 export const SILICON_URL = "https://systolic-arrays-explained.vercel.app";
+export const TRADEOFFS_URL = "https://inference-tradeoffs-explained.vercel.app";
 
 export const GITHUB_URL =
   "https://github.com/BrendanJamesLynskey/llm-inference-explained";
