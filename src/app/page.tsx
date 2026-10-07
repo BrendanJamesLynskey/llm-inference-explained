@@ -8,6 +8,7 @@ import {
   KERNELS_URL,
   NUMERICS_URL,
   SILICON_URL,
+  TRADEOFFS_URL,
 } from "@/lib/site";
 
 const ENTRY_POINTS = [
@@ -149,14 +150,22 @@ export default function HomePage(): JSX.Element {
         >
           Numerics Explained
         </a>{" "}
-        shows the number formats and quantisation behind it, and{" "}
+        shows the number formats and quantisation behind it,{" "}
         <a
           href={SILICON_URL}
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
         >
           Systolic Arrays Explained
         </a>{" "}
-        shows the matrix hardware of TPUs. The source of this one is on{" "}
+        shows the matrix hardware of TPUs, and{" "}
+        <a
+          href={TRADEOFFS_URL}
+          className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
+        >
+          Inference Trade-offs Explained
+        </a>{" "}
+        measures which serving lever helps which metric. The source of this one
+        is on{" "}
         <a
           href="https://github.com/BrendanJamesLynskey/llm-inference-explained"
           className="focus-ring rounded underline decoration-accent/40 underline-offset-4 hover:decoration-accent"
