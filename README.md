@@ -22,7 +22,9 @@ Silicon · Trade-offs) and "Agents", which starts with
 [Agent Harnesses Explained](https://agent-harnesses-explained.vercel.app/)
 (the loop, tools, context and permissions that turn a model into an agent;
 then [Agent Protocols Explained](https://agent-protocols-explained.vercel.app/),
-MCP and A2A on the wire; four more agent sites are marked "soon"). [Numerics Explained](https://numerics-explained.vercel.app/)
+MCP and A2A on the wire;
+then [Agent Context Explained](https://agent-context-explained.vercel.app/),
+retrieval, memory and context engineering; three more agent sites are marked "soon"). [Numerics Explained](https://numerics-explained.vercel.app/)
 covers number formats and quantisation, and
 [Systolic Arrays Explained](https://systolic-arrays-explained.vercel.app/)
 the matrix hardware (chapter 9 links its torus all-reduce).
