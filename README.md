@@ -29,7 +29,9 @@ MCP and A2A on the wire;
 then [Agent Context Explained](https://agent-context-explained.vercel.app/),
 retrieval, memory and context engineering;
 then [Agent Orchestration Explained](https://agent-orchestration-explained.vercel.app/),
-graphs, multi-agent patterns and durable execution; two more agent sites are marked "soon"). [Numerics Explained](https://numerics-explained.vercel.app/)
+graphs, multi-agent patterns and durable execution;
+then [Agent Evals Explained](https://agent-evals-explained.vercel.app/),
+measuring agents and how sure to be; one more agent site is marked "soon"). [Numerics Explained](https://numerics-explained.vercel.app/)
 covers number formats and quantisation, and
 [Systolic Arrays Explained](https://systolic-arrays-explained.vercel.app/)
 the matrix hardware (chapter 9 links its torus all-reduce).
