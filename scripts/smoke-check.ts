@@ -32,6 +32,7 @@ const SWITCH = [
   'data-site-switch="menu"',
   'data-site-group="foundations"',
   'data-site-group="hardware"',
+  'href="https://ai-racks-explained.vercel.app"',
   'data-site-key="decoder"',
   'href="https://transformer-training-explained.vercel.app"',
   'data-site-place="inference"',
