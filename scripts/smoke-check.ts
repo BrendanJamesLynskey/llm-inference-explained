@@ -27,6 +27,17 @@ const headers: Record<string, string> = process.env.VERCEL_BYPASS
   ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS }
   : {};
 
+/** The four-track site switch, with this site's place on the button and in the header. */
+const SWITCH = [
+  'data-site-switch="menu"',
+  'data-site-group="foundations"',
+  'data-site-group="hardware"',
+  'data-site-key="decoder"',
+  'href="https://transformer-training-explained.vercel.app"',
+  'data-site-place="inference"',
+  "data-site-brand",
+];
+
 async function checkPage(
   base: string,
   path: string,
@@ -88,7 +99,10 @@ async function main(): Promise<void> {
   const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
   console.log(`Smoke-checking ${base}`);
   const results: Result[] = [
-    await checkPage(base, "/", ["How a model actually generates text"]),
+    await checkPage(base, "/", [
+      "How a model actually generates text",
+      ...SWITCH,
+    ]),
     await checkPage(base, "/learn", ["Inference, chapter by chapter"]),
     await checkPage(base, "/about", ["Where the numbers come from"]),
   ];
