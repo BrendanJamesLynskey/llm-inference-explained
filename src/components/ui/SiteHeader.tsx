@@ -7,7 +7,7 @@
  */
 import Link from "next/link";
 
-import { SiteSwitch } from "./SiteSwitch";
+import { placeOf, SitePlace, SiteSwitch } from "./SiteSwitch";
 
 export function SiteHeader(): JSX.Element {
   return (
@@ -15,9 +15,11 @@ export function SiteHeader(): JSX.Element {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="focus-ring rounded font-mono text-sm font-medium tracking-tight"
+          title={placeOf("inference").title}
+          data-site-brand
+          className="focus-ring whitespace-nowrap rounded text-sm tracking-tight"
         >
-          llm-inference-explained
+          <SitePlace current="inference" />
         </Link>
         <nav
           aria-label="Site"

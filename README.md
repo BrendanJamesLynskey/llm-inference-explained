@@ -16,11 +16,12 @@ for many users at once. The third site,
 shows how real models' designs differ, and the fourth,
 [GPU Kernels Explained](https://gpu-kernels-explained.vercel.app/), shows how
 a GPU executes the maths. The sites share one design system and link to each
-other from the header, in three groups:
-"Inference" (Decoder · Inference · Architectures · Kernels · Numerics ·
-Silicon · Trade-offs), "Training" (Training, the second part of the decoder
-site, marked "soon", and
-[Compute in transit](https://compute-in-transit-results.vercel.app/)) and "Agents", which starts with
+other from the header, in four tracks, and the
+header always shows where you are ("Track › Site"): "Foundations" (Decoder ·
+Training: one small model, end to end), "Hardware" (Kernels · Silicon · Racks,
+soon: the machines underneath, chip to rack), "Inference" (Serving ·
+Architectures · Numerics · Trade-offs; Serving is LLM Inference Explained) and
+"Agents", which starts with
 [Agent Harnesses Explained](https://agent-harnesses-explained.vercel.app/)
 (the loop, tools, context and permissions that turn a model into an agent;
 then [Agent Protocols Explained](https://agent-protocols-explained.vercel.app/),
