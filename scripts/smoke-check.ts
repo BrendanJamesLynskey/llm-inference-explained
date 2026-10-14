@@ -21,6 +21,13 @@ import VENDORED from "@/lib/disagg/vendor/VENDORED.json";
 import { WORKLOAD_RATES } from "@/lib/disagg/workloads";
 import { SECTIONS } from "@/lib/mdx/sections";
 
+/** The author credit: the last line of the About page (brief 35). */
+const CREDIT = [
+  'data-author-credit="true"',
+  "Written and built by",
+  'href="https://github.com/BrendanJamesLynskey">Brendan Lynskey</a>',
+];
+
 type Result = { path: string; ok: boolean; detail: string };
 
 const headers: Record<string, string> = process.env.VERCEL_BYPASS
@@ -108,7 +115,7 @@ async function main(): Promise<void> {
       ...SWITCH,
     ]),
     await checkPage(base, "/learn", ["Inference, chapter by chapter"]),
-    await checkPage(base, "/about", ["Where the numbers come from"]),
+    await checkPage(base, "/about", [...CREDIT, "Where the numbers come from"]),
   ];
   for (const s of SECTIONS) {
     results.push(
