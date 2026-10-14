@@ -4,7 +4,7 @@
  */
 import Link from "next/link";
 
-import { DECODER_URL, GITHUB_URL } from "@/lib/site";
+import { AUTHOR, DECODER_URL, GITHUB_URL } from "@/lib/site";
 
 export const metadata = {
   title: "About",
@@ -116,6 +116,15 @@ export default function AboutPage(): JSX.Element {
           .
         </p>
       </div>
+      <p
+        className="mt-12 text-sm text-neutral-600 dark:text-neutral-400"
+        data-author-credit
+      >
+        Written and built by{" "}
+        <a className={A} href={AUTHOR.url}>
+          {AUTHOR.name}
+        </a>
+      </p>
     </main>
   );
 }
