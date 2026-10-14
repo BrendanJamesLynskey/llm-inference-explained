@@ -38,6 +38,7 @@ const SWITCH = [
   'data-site-key="decoder"',
   'href="https://transformer-training-explained.vercel.app"',
   'data-site-place="inference"',
+  'data-site-brand="true" class="focus-ring whitespace-nowrap rounded text-sm font-medium tracking-tight" href="/">LLM Inference Explained</a>',
   "data-site-brand",
 ];
 

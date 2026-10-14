@@ -3,11 +3,12 @@
  *
  * Server Component, adapted from transformer-explainer's `SiteHeader`
  * (same layout and classes). This site has no accounts, so the sign-in
- * controls are replaced by the cross-site switch.
+ * controls are replaced by the cross-site switch. The brand names the site;
+ * the switch's button says where it sits ("Track › Site").
  */
 import Link from "next/link";
 
-import { placeOf, SitePlace, SiteSwitch } from "./SiteSwitch";
+import { nameOf, placeOf, SiteSwitch } from "./SiteSwitch";
 
 export function SiteHeader(): JSX.Element {
   return (
@@ -17,9 +18,9 @@ export function SiteHeader(): JSX.Element {
           href="/"
           title={placeOf("inference").title}
           data-site-brand
-          className="focus-ring whitespace-nowrap rounded text-sm tracking-tight"
+          className="focus-ring whitespace-nowrap rounded text-sm font-medium tracking-tight"
         >
-          <SitePlace current="inference" />
+          {nameOf("inference")}
         </Link>
         <nav
           aria-label="Site"

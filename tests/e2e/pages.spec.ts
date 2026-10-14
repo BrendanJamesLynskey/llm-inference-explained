@@ -117,7 +117,7 @@ test("the layer toggle shows the maths layer", async ({ page }) => {
   ).toBeGreaterThan(3);
 });
 
-test("the site switch: four tracks, and the button and header say where you are", async ({
+test("the site switch: four tracks, and the brand names the site and the button says where it sits", async ({
   page,
 }) => {
   const menu = page.locator("[data-site-switch='menu']");
@@ -127,15 +127,15 @@ test("the site switch: four tracks, and the button and header say where you are"
   for (const width of [1280, 1024, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("/");
-    // closed: the button reads "<Track> › <Site>", and the header shows the same place
+    // closed: the button reads "<Track> › <Site>", and the brand names the site
     await expect(menu).toBeVisible();
     await expect(menu.locator("summary")).toHaveText(
       /^Inference\W+Serving\W*$/,
     );
-    await expect(brand).toHaveText(/^Inference\W+Serving\W*$/);
-    expect(await brand.locator("[data-site-place]").textContent()).toBe(
-      await menu.locator("summary [data-site-place]").textContent(),
-    );
+    // the brand names the site; the place ("Track › Site") is said once, on the button
+    await expect(brand).toHaveText("LLM Inference Explained");
+    await expect(brand.locator("[data-site-place]")).toHaveCount(0);
+    await expect(page.locator("header [data-site-place]")).toHaveCount(1);
     if (width === 1280)
       expect((await brand.boundingBox())!.height).toBeLessThan(30);
     await expect(panel).toBeHidden();
