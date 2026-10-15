@@ -50,6 +50,13 @@ the argument against it there is cost and complexity, not joules.
 
 **Alternatives.** Chunked prefill (chapter 4) bounds decode stalls on
 colocated GPUs without moving any KV cache, and is the usual first step.
+This chapter's colocated runs leave it out (see the callout below). With it
+and the other levers available to both sides, the
+[Trade-offs site's combined sweep](https://inference-tradeoffs-explained.vercel.app/learn/13-combining-levers) finds that disaggregation no longer
+wins on any workload's goodput, though it keeps the flattest decode tail.
+Both sites model dense Llama 3 models; at mixture-of-experts scale, with wide
+expert parallelism, the balance can differ, and the simulator does not model
+it.
 Disaggregation is now offered by several serving engines; their designs
 and maturity differ and change quickly, so read their documentation rather
 than a summary: vLLM's

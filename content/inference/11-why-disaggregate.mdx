@@ -35,7 +35,18 @@ numbers are the simulator's recorded ones (results.md §4): inter-token
 latency at the median is about the same either way (colocated p50 14.1 ms,
 disaggregated 14.4 ms), but the colocated **tail** is where the stalls
 land: p99 188.8 ms and a worst gap of 1,074 ms, against p99 15.2 ms and a
-worst gap of 81.0 ms disaggregated. Disaggregation cuts p99 ITL 12.4x.
+worst gap of 81.0 ms disaggregated. Against this baseline, a colocated
+scheduler that runs each prompt's prefill whole (no chunked prefill),
+disaggregation cuts p99 ITL 12.4x.
+
+That baseline is the one most favourable to disaggregation. Chunked prefill
+(chapter 4) bounds the same stalls on colocated GPUs, and the
+[Trade-offs site's combined sweep](https://inference-tradeoffs-explained.vercel.app/learn/13-combining-levers) finds that with every lever
+available to both, disaggregation no longer wins on any workload's goodput,
+though it still gives the flattest decode tail. These runs also cover a dense
+model only (Llama-3-70B); the deployments that report large gains from
+disaggregation serve big mixture-of-experts models with wide expert
+parallelism, which the simulator does not model.
 
 </Layer>
 
