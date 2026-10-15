@@ -39,6 +39,7 @@ const SWITCH = [
   'data-site-group="foundations"',
   'data-site-group="hardware"',
   'href="https://ai-racks-explained.vercel.app"',
+  'href="https://ai-accelerators-explained.vercel.app"',
   'href="https://agent-evals-explained.vercel.app"',
   'href="https://agent-security-explained.vercel.app"',
   'data-site-key="decoder"',
