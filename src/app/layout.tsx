@@ -10,10 +10,11 @@ import type { ReactNode } from "react";
 
 import { SiteHeader } from "@/components/ui/SiteHeader";
 import { SITE_URL } from "@/lib/site";
+import { withShare } from "@/lib/share";
 
 import "./globals.css";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = withShare("/", {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "LLM Inference Explained",
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   },
   description:
     "An interactive explainer of real LLM inference: the generation loop, the KV cache, rooflines, batching, paging, attention kernels, speculative decoding, quantisation, parallelism, serving metrics and disaggregated serving, with the serving simulator running live in your browser.",
-};
+});
 
 export default function RootLayout({
   children,

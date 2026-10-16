@@ -9,12 +9,13 @@ import Link from "next/link";
 
 import { SECTIONS } from "@/lib/mdx/sections";
 import { DECODER_URL } from "@/lib/site";
+import { withShare } from "@/lib/share";
 
-export const metadata = {
+export const metadata = withShare("/learn", {
   title: "Learn",
   description:
     "Fourteen chapters on how real LLM inference works, each with a live interactive.",
-};
+});
 
 export default function LearnIndex(): JSX.Element {
   return (

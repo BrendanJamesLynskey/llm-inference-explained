@@ -5,12 +5,13 @@
 import Link from "next/link";
 
 import { AUTHOR, DECODER_URL, GITHUB_URL } from "@/lib/site";
+import { withShare } from "@/lib/share";
 
-export const metadata = {
+export const metadata = withShare("/about", {
   title: "About",
   description:
     "What LLM Inference Explained is, where its numbers come from, and how it is built.",
-};
+});
 
 const A =
   "focus-ring rounded text-accent underline underline-offset-2 dark:text-indigo-300";
@@ -35,7 +36,7 @@ export default function AboutPage(): JSX.Element {
           and doing it fast for many users at once.
         </p>
 
-        <h2>Where the numbers come from</h2>
+        <h2 id="numbers">Where the numbers come from</h2>
         <ul>
           <li>
             <strong>The live tiny model</strong> in chapters 1 and 2 is the
