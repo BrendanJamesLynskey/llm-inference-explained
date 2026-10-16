@@ -30,9 +30,13 @@ const BG = "#0b1020";
 
 export type CardChapter = { number: number; title: string };
 
+/** A second address's own glyph and graphic (the default: this site's). */
+export type CardArt = { glyph: JSX.Element; motif: JSX.Element };
+
 export async function card(
   chapter?: CardChapter,
   share: Share = SHARE,
+  art: CardArt = { glyph: <Glyph size={52} />, motif: <Motif /> },
 ): Promise<ImageResponse> {
   const [bold, regular, mono] = await Promise.all([
     font("NotoSans-Bold.ttf"),
@@ -66,7 +70,7 @@ export async function card(
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <Glyph size={52} />
+          {art.glyph}
           <div
             style={{
               display: "flex",
@@ -159,7 +163,7 @@ export async function card(
           paddingRight: 40,
         }}
       >
-        <Motif />
+        {art.motif}
       </div>
       <div
         style={{
