@@ -18,6 +18,7 @@
  * and Theorem 2, and the Flash-Decoding note (Dao, Haziza, Massa and
  * Sizov, crfm.stanford.edu, 2023).
  */
+import { mulberry32, normalSampler } from "@/lib/transformer/random";
 import type { Matrix, Vector } from "@/lib/transformer/types";
 
 function dot(a: Vector, b: Vector): number {
@@ -159,4 +160,111 @@ export function hbmFlash(N: number, d: number, M: number): number {
   const Bc = Math.ceil(M / (4 * d));
   const Tc = Math.ceil(N / Bc);
   return 2 * N * d + Tc * (3 * N * d + 4 * N);
+}
+
+// ─── chapter 6's hero: FlashAttention tile by tile (brief 41) ──────────
+
+/** A seeded N(0, scale²) matrix (mulberry32 + Box-Muller, the site's generator). */
+export function seededMatrix(
+  rows: number,
+  cols: number,
+  seed: number,
+  scale = 1,
+): Matrix {
+  const n = normalSampler(mulberry32(seed));
+  return Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => n() * scale),
+  );
+}
+
+/** The hero's problem: 16 queries and keys of width 8, tiles of 4 by 4. */
+export const FLASH_HERO = { n: 16, d: 8, br: 4, bc: 4, seeds: [11, 12, 13] };
+
+/** The hero's Q, K and V. */
+export function flashHeroInputs(): { Q: Matrix; K: Matrix; V: Matrix } {
+  const { n, d, seeds } = FLASH_HERO;
+  return {
+    Q: seededMatrix(n, d, seeds[0]!),
+    K: seededMatrix(n, d, seeds[1]!),
+    V: seededMatrix(n, d, seeds[2]!),
+  };
+}
+
+/** One tile of FlashAttention: query block `qi` folds key block `kj`. */
+export type FlashTileState = {
+  /** Tile index in schedule order (query block major). */
+  t: number;
+  qi: number;
+  kj: number;
+  /** The query rows and key columns this tile covers. */
+  rows: [number, number];
+  cols: [number, number];
+  /** Every query row's running state after this tile (rows not yet started: m = −∞). */
+  m: number[];
+  l: number[];
+  /** The query block's rows of O are written back when its last key block is done. */
+  written: number[];
+  /** Elements moved to and from HBM so far: Q, K and V tiles read, O written. */
+  hbm: number;
+};
+
+/**
+ * The tile schedule of FlashAttention's forward pass on a small problem,
+ * driven by `foldTile` (the same online softmax `attentionTiled` runs):
+ * for each block of `br` query rows, stream the keys and values in blocks of
+ * `bc`, updating each row's running max m and sum l; when the row block has
+ * seen every key block, write its rows of O. The N×N score matrix is never
+ * stored: each tile's scores live only inside the tile.
+ */
+export function flashTileStates(
+  Q: Matrix,
+  K: Matrix,
+  V: Matrix,
+  br: number,
+  bc: number,
+): FlashTileState[] {
+  const N = Q.length;
+  const d = Q[0]!.length;
+  const dv = V[0]!.length;
+  const st: Partial[] = Q.map(() => empty(dv));
+  const out: FlashTileState[] = [];
+  const written: number[] = [];
+  let hbm = 0;
+  let t = 0;
+  for (let i0 = 0; i0 < N; i0 += br) {
+    const i1 = Math.min(N, i0 + br);
+    hbm += (i1 - i0) * d; // read the query block once
+    for (let j0 = 0; j0 < K.length; j0 += bc) {
+      const j1 = Math.min(K.length, j0 + bc);
+      hbm += (j1 - j0) * (d + dv); // read the key and value block
+      for (let i = i0; i < i1; i++)
+        st[i] = foldTile(Q[i]!, K, V, j0, j1, st[i]!);
+      const last = j1 === K.length;
+      if (last) {
+        hbm += (i1 - i0) * dv; // write O for these rows
+        for (let i = i0; i < i1; i++) written.push(i);
+      }
+      out.push({
+        t: t++,
+        qi: i0 / br,
+        kj: j0 / bc,
+        rows: [i0, i1],
+        cols: [j0, j1],
+        m: st.map((s) => s.m),
+        l: st.map((s) => s.l),
+        written: written.slice(),
+        hbm,
+      });
+    }
+  }
+  return out;
+}
+
+/** The caption for one tile state. */
+export function flashCaption(s: FlashTileState, nk: number): string {
+  const [r0, r1] = s.rows;
+  const [c0, c1] = s.cols;
+  const done = s.cols[1] === nk;
+  const m = s.m[r0]!;
+  return `Tile ${s.t + 1}: queries ${r0}–${r1 - 1} against keys ${c0}–${c1 - 1}. Their scores live only in on-chip memory; row ${r0}'s running max is now ${m.toFixed(2)} and its sum ${s.l[r0]!.toFixed(2)}.${done ? ` Rows ${r0}–${r1 - 1} have seen every key: O is normalised and written.` : ""} HBM traffic so far: ${s.hbm.toLocaleString("en-GB")} numbers.`;
 }

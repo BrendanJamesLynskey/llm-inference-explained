@@ -153,6 +153,10 @@ export function prefill(
  * @param config   Model hyperparameters.
  * @param weights  Model weights.
  * @param counter  Optional FLOP tally (closed form: `decodeStepFlops`).
+ * @param attn     Optional: receives each block's per-head softmax weights
+ *                 of the new query over the cached positions,
+ *                 `attn[block][head]` of length `pos + 1` (brief 41: what
+ *                 the KV-cache animation lights up).
  * @returns        Logits for the next token `[V]`.
  */
 export function decodeStep(
@@ -161,6 +165,7 @@ export function decodeStep(
   config: ModelConfig,
   weights: ModelWeights,
   counter?: FlopCounter,
+  attn?: Vector[][],
 ): Vector {
   const pos = cache.length;
   const D = config.d_model;
@@ -187,6 +192,7 @@ export function decodeStep(
     layer.V.push(v);
 
     const concat: Vector = [];
+    const heads: Vector[] = [];
     for (let h = 0; h < H; h++) {
       const lo = h * dHead;
       const qh = [q.slice(lo, lo + dHead)];
@@ -196,8 +202,10 @@ export function decodeStep(
       const raw = mm(qh, transpose(Kh), counter)[0]!;
       const scores = raw.map((s) => s * scale);
       const weightsRow = softmax(scores);
+      heads.push(weightsRow);
       concat.push(...mm([weightsRow], Vh, counter)[0]!);
     }
+    if (attn) attn.push(heads);
     const attnOut = mm([concat], w.attn.W_o, counter)[0]!;
     const hRow = addVec(x, attnOut);
 

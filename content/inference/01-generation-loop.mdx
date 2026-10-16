@@ -8,6 +8,10 @@ and [Sampling](https://transformer-decoder-explained.vercel.app/learn/07-samplin
 
 </Callout>
 
+One request, pass by pass, priced by the serving simulator's cost model: the prompt goes in one long pass, then every output token is a short pass of its own.
+
+<GenerationTimeline />
+
 <Layer kind="concept">
 
 A decoder-only language model has exactly one job: given a sequence of

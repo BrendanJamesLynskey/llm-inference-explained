@@ -43,8 +43,11 @@ export default function AboutPage(): JSX.Element {
             Transformer Decoder Explainer&rsquo;s pure-TypeScript transformer
             (verified against PyTorch to 1e-5), vendored here and extended with
             a KV cache. Its tests prove cached generation gives bit-identical
-            logits to full recomputation. Its weights are random, so its text is
-            gibberish; the arithmetic is real.
+            logits to full recomputation. By default it runs the Decoder
+            site&rsquo;s trained weights (Training&rsquo;s default run on one
+            public-domain book); its random initialisation is one click away.
+            Chapter 2&rsquo;s animation is checked against an independent
+            float64 forward pass, step by step.
           </li>
           <li>
             <strong>Hardware and step times</strong> (H100, A100, Llama-3-8B and

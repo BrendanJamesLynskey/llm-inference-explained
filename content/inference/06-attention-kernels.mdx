@@ -7,6 +7,10 @@ arithmetic, is often the limit.
 
 </Callout>
 
+FlashAttention's forward pass, tile by tile, on a small problem: the scores are computed, used and dropped on chip.
+
+<FlashTiles />
+
 <Layer kind="concept">
 
 Written the obvious way, attention for one head over $N$ tokens is three

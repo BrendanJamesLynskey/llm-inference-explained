@@ -74,6 +74,46 @@ Fourteen chapters at `/learn`, each with Concept / Maths / Code layers to toggle
 | 13  | A live disaggregated simulator        | The simulator's own engine: pools, devices, links, compression, load and SLOs; presets that reproduce results.md     |
 | 14  | Trade-offs: when not to disaggregate  | A load sweep, colocated against 1P1D, for a small and a large model and three links                                  |
 
+## Animations
+
+Since brief 41 every chapter that has a mechanism to show opens with an
+animation driven by a tested model (play, pause, step, scrub, 0.25–4×
+speed, keyboard; captions read out to screen readers; no autoplay with
+reduced motion). GIFs (WebM alongside) in [`docs/media/`](docs/media/):
+
+|                                                                                 |                                                                                      |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| ![The same requests, colocated or split (landing)](docs/media/landing-hero.gif) | ![One request: prefill, then one step per token](docs/media/generation-timeline.gif) |
+| ![The KV cache filling, one column per step](docs/media/kv-cache-fill.gif)      | ![Batching walks decode up the roofline](docs/media/roofline-climb.gif)              |
+| ![FlashAttention, one tile at a time](docs/media/flash-tiles.gif)               |                                                                                      |
+
+- **Landing**: the same 200 requests on the same eight H100s, colocated and
+  disaggregated, simulated by the vendored engine at build time; when the
+  hero comes into view the browser re-runs all of them in a Web Worker and
+  says whether the timestamps match. Its two configurations and rows are
+  cases of the parity fixture (`public/disagg/hero.json`).
+- **Chapters 1 and 3** (`src/lib/inference/heroes.ts`), **2**
+  (`kvHero.ts`) and **6** (`attentionKernels.ts`, `flashTileStates`):
+  `scripts/hero_reference.py` rebuilds every state independently (the
+  simulator's Python cost model at the commit `cost_model.json` names; a
+  float64 numpy forward pass recomputed at every step; a plain-Python online
+  softmax) into `tests/unit/fixtures/heroes.json`, and
+  `tests/unit/inference/heroes.test.ts` and `tests/e2e/hero-frames.spec.ts`
+  require the site's states and on-page captions to match.
+- **Chapters 4, 5, 7, 9, 11 and 12** show the mechanism animations of
+  [Inference Trade-offs Explained](https://inference-tradeoffs-explained.vercel.app)
+  (batching policies, paged KV memory, draft and verify, the ring
+  all-reduce and a GPipe schedule, colocated against split pools, the KV
+  hand-off), vendored byte for byte from its commit `239d29b` with the
+  scenarios the simulator recorded (at its commit `69ffd2b`) and their tests
+  (`tests/unit/mech/`). `src/lib/tradeoffs/VENDORED.json` lists every file
+  and its SHA-256; `tests/unit/mech/vendor.test.ts` checks them.
+- **The tiny model** runs, by default, the trained weights of the Decoder
+  site (Training's default run on _Alice's Adventures in Wonderland_;
+  `public/data/trained-weights.json`, from transformer-explainer's
+  `public/training/default-run-weights.json` at `984e647`), with a Weights
+  control to switch to its random init.
+
 ## Screenshots
 
 |                                               |                                                              |
@@ -93,8 +133,9 @@ Regenerate them with `pnpm build && pnpm start` in one shell and
   (`src/lib/transformer/kvcache.ts`). `tests/unit/transformer/kvcache.test.ts`
   proves cached generation gives **identical** logits to recomputing the whole
   sequence (exact equality, no tolerance) on two model sizes, and that the
-  cache does a fraction of the FLOPs. Its weights are random, so its text is
-  gibberish; the arithmetic is real.
+  cache does a fraction of the FLOPs. By default it runs the Decoder site's
+  trained weights (see Animations above), so its greedy text starts to look
+  like English letters; its random init is one click away.
 - **Hardware, models and step times** come from the roofline cost model of
   [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim)
   (`src/disagg_sim/hardware.py`), ported to `src/lib/inference/costModel.ts`
@@ -262,6 +303,13 @@ scripts/                    smoke-check, capture-screenshots, verify-maths,
   and its PyTorch fixtures are from
   [transformer-explainer](https://github.com/BrendanJamesLynskey/transformer-explainer)
   (MIT), vendored unchanged at commit `5c259da`.
+- The mechanism animations in `src/components/mech/`, their library in
+  `src/lib/tradeoffs/`, the animation frame in `src/components/anim/`, the
+  palette and `Controls.tsx` are from
+  [inference-tradeoffs-explained](https://github.com/BrendanJamesLynskey/inference-tradeoffs-explained)
+  at `239d29b`, byte for byte (`src/lib/tradeoffs/VENDORED.json`).
+- The trained toy weights are transformer-explainer's (Training's default
+  run), at `984e647`.
 - The cost model is ported from, and the simulator engine in
   `src/lib/disagg/vendor/` is vendored unchanged from,
   [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim)

@@ -22,6 +22,21 @@ import {
   SpeculativeWidget,
   TradeoffWidget,
 } from "@/components/interactive/lazy";
+import {
+  BatchingMechanism,
+  DraftMechanism,
+  HandoffMechanism,
+  PagedKvMechanism,
+  PipelineMechanism,
+  PoolsMechanism,
+  RingMechanism,
+} from "@/components/mech/Mechanisms";
+import {
+  FlashTiles,
+  GenerationTimeline,
+  KvFill,
+  RooflineClimb,
+} from "@/components/heroes/Heroes";
 import { Callout } from "@/components/ui/Callout";
 import { MdxTable } from "@/components/ui/MdxTable";
 
@@ -44,4 +59,17 @@ export const mdxComponents: NonNullable<MDXRemoteProps["components"]> = {
   KvHandoffWidget,
   DisaggSimulatorWidget,
   TradeoffWidget,
+  // brief 41: the Trade-offs site's mechanism animations
+  BatchingMechanism,
+  PagedKvMechanism,
+  DraftMechanism,
+  RingMechanism,
+  PipelineMechanism,
+  PoolsMechanism,
+  HandoffMechanism,
+  // brief 41: the chapter heroes
+  GenerationTimeline,
+  KvFill,
+  RooflineClimb,
+  FlashTiles,
 };

@@ -3,7 +3,8 @@
 /**
  * The generation loop, live: prefill the prompt in one pass, then decode one
  * token per step until a stop condition. Runs the vendored transformer
- * (untrained, seed 42) with the KV cache in the browser.
+ * with the KV cache in the browser: by default on the Decoder site's
+ * trained weights (brief 41), or on its random init (seed 42).
  */
 import { useMemo, useRef, useState } from "react";
 
@@ -15,6 +16,7 @@ import {
   toyEncode,
   toyLabel,
   toyWeights,
+  type ToyKind,
 } from "@/lib/inference/toyModel";
 import {
   decodeStep,
@@ -25,6 +27,8 @@ import {
 import { mulberry32 } from "@/lib/transformer/random";
 import { sample, type SampleMode } from "@/lib/transformer/sampling";
 import { softmax } from "@/lib/transformer/softmax";
+
+import { useToyWeights } from "./useToyWeights";
 
 type Mode = "greedy" | "temperature";
 type Tok = { id: number; phase: "prompt" | "generated" };
@@ -46,6 +50,8 @@ export function GenerationLoopWidget(): JSX.Element {
   const [steps, setSteps] = useState<Step[]>([]);
   const [logits, setLogits] = useState<number[] | null>(null);
   const [stopped, setStopped] = useState<string | null>(null);
+  const [kind, setKindState] = useState<ToyKind>("trained");
+  const { ready } = useToyWeights(kind);
   const cache = useRef<KVCache | null>(null);
   const rng = useRef(mulberry32(7));
 
@@ -78,7 +84,7 @@ export function GenerationLoopWidget(): JSX.Element {
   function runPrefill(): void {
     const ids = toyEncode(prompt || "a");
     const c: FlopCounter = { flops: 0 };
-    const out = prefill(ids, TOY_CONFIG, toyWeights(), c);
+    const out = prefill(ids, TOY_CONFIG, toyWeights(kind), c);
     cache.current = out.cache;
     const all = ids.map((id) => ({ id, phase: "prompt" as const }));
     emit(
@@ -99,7 +105,7 @@ export function GenerationLoopWidget(): JSX.Element {
     if (!c || stopped) return;
     const last = toks[toks.length - 1]!;
     const fc: FlopCounter = { flops: 0 };
-    const l = decodeStep(last.id, c, TOY_CONFIG, toyWeights(), fc);
+    const l = decodeStep(last.id, c, TOY_CONFIG, toyWeights(kind), fc);
     emit(
       l,
       {
@@ -128,9 +134,13 @@ export function GenerationLoopWidget(): JSX.Element {
     <WidgetFrame
       testId="generation-loop"
       title="Prefill once, then one token per step"
-      caption="A real 2-block decoder (d_model 16, untrained random weights, so the text is gibberish) running in your browser. Prefill processes the whole prompt in one pass; every decode step processes one token."
+      caption={
+        kind === "trained"
+          ? "A real 2-block decoder (d_model 16) trained on one book on the Training site, running in your browser; it saw 8-character windows, so its guesses get worse past 8 characters. Prefill processes the whole prompt in one pass; every decode step processes one token."
+          : "The same decoder at its random initialisation (seed 42): the text is gibberish, the computation the same. Prefill processes the whole prompt in one pass; every decode step processes one token."
+      }
     >
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
         <label className="flex min-w-0 flex-col gap-1 text-sm">
           <span className="font-medium text-neutral-700 dark:text-neutral-300">
             Prompt
@@ -154,10 +164,22 @@ export function GenerationLoopWidget(): JSX.Element {
           ]}
           onChange={setMode}
         />
+        <Segmented
+          label="Weights"
+          value={kind}
+          options={[
+            { value: "trained", label: "trained" },
+            { value: "random", label: "random init" },
+          ]}
+          onChange={(k) => {
+            reset();
+            setKindState(k);
+          }}
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <ActionButton onClick={runPrefill} disabled={started}>
+        <ActionButton onClick={runPrefill} disabled={started || !ready}>
           1 · Prefill the prompt
         </ActionButton>
         <ActionButton

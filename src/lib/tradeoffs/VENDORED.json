@@ -1,0 +1,112 @@
+{
+  "note": "Copied byte for byte from Inference Trade-offs Explained (brief 41): its mechanism animations, their library, the simulator engine it vendors and the scenarios the simulator recorded. tests/unit/mech/vendor.test.ts checks every hash.",
+  "repository": "https://github.com/BrendanJamesLynskey/inference-tradeoffs-explained",
+  "commit": "239d29b92bd359d3907f5b5c481dfc627c257ada",
+  "simulator": {
+    "repository": "https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim",
+    "commit": "69ffd2b8886c03f164bdb07dea954d1452169a06",
+    "path": "web/sim_engine.js"
+  },
+  "files": [
+    {
+      "path": "src/components/mech/common.tsx",
+      "sha256": "ff56dd12d381cb7ad15599b4a22373d7d755523b6b64693286bace0cee21fe6f"
+    },
+    {
+      "path": "src/components/mech/BatchingWidget.tsx",
+      "sha256": "cb9ad570d05fa3b10fbd055541f4ed7abc95733b7b428908495afc083f3d8049"
+    },
+    {
+      "path": "src/components/mech/KvWidget.tsx",
+      "sha256": "de05adae326b0568b063a4f312690751183af7fca51073be1f5724dd9e7adf4a"
+    },
+    {
+      "path": "src/components/mech/PoolWidget.tsx",
+      "sha256": "0f2df79374519b5a36d8c8c8d44052f4e19931f24a89f488a924d4ed496a838e"
+    },
+    {
+      "path": "src/components/mech/RingWidget.tsx",
+      "sha256": "41c91cf5c0311a098b7e1fa60f33c599cbc8e331d87ec25c00bc144d08a96a9b"
+    },
+    {
+      "path": "src/components/mech/GpipeWidget.tsx",
+      "sha256": "42baef4689d2494f53664ab099d9b13eb3c57e8d61813b7e380f6b28bdc5533f"
+    },
+    {
+      "path": "src/components/mech/DraftWidget.tsx",
+      "sha256": "1509e0fc8e755aaf897940ceb1e5ad8c1e838c076d2d26acad628ed2efd35a8f"
+    },
+    {
+      "path": "src/components/anim/AnimationPanel.tsx",
+      "sha256": "adca7f17a1b38f857ec6444499649e4f619a01cdee92667a0faefe4d4c2aa23a"
+    },
+    {
+      "path": "src/components/anim/useStepper.ts",
+      "sha256": "82d09f5c15aa1561953fe912b95e8a6bc3998408a05187c12bb726080a6bb110"
+    },
+    {
+      "path": "src/components/anim/useTween.ts",
+      "sha256": "a59b3af79abfe7c200c8f5c17f86984a6ff739e674970e0773cd74db6c8a71ae"
+    },
+    {
+      "path": "src/lib/anim/clock.ts",
+      "sha256": "d1cf624e3f48118e1e8ab477f23019daff2eed4da755b24522ce71e83101370a"
+    },
+    {
+      "path": "src/lib/viz/palette.ts",
+      "sha256": "13e11ff4d7801c1c767bd6bbb45e2eae030fb4ae855ec6a1d0e73824ec88043b"
+    },
+    {
+      "path": "src/lib/tradeoffs/mech.ts",
+      "sha256": "1b067ca5eef8a2bda5a55be860b2f23bbc313a6cf9a7c6e4368b4e8d0df7e48a"
+    },
+    {
+      "path": "src/lib/tradeoffs/timeline.ts",
+      "sha256": "8c7bc20f0d5b3c6826d7920822b73f5a3125fa668197b676ccb89ac1d12e3a2d"
+    },
+    {
+      "path": "src/lib/tradeoffs/costs.ts",
+      "sha256": "2b7be535a8b149c2d990fe074fd200bd70019db6da1c78e21964124837630d24"
+    },
+    {
+      "path": "src/lib/tradeoffs/engine.ts",
+      "sha256": "1c74cbea37e610bc197f5a5f4dc09de45421ce5476f720ebc9cbca6ae43f417a"
+    },
+    {
+      "path": "src/lib/tradeoffs/vendor/sim_engine.js",
+      "sha256": "c7c1d2bdb0b19df050c0a0c79feec7b183703d3622da5fb3b97c1fa8708e0478"
+    },
+    {
+      "path": "src/components/ui/Controls.tsx",
+      "sha256": "df8d039680fcd3909b3ff5c467a685e0fe3cd01a28186bf3bfa7433881f3f219"
+    },
+    {
+      "path": "src/components/mdx/Eq.tsx",
+      "sha256": "2029b891f2c49625aa78fbf8232c02971ef8f16b2c96264696da92ed867efcba"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/batching.json",
+      "sha256": "ebe06809ddd72c78ae77ea0a99e277cb237e5cd4f6a42ccba7938e51af39e6ff"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/paged.json",
+      "sha256": "c1dd643749cccef78f813814d2aa2e24be77e068e425ddd939a62799ad9f9349"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/pools.json",
+      "sha256": "a2ed54ecf36ebaf964ba5757d10fadca6911016acd09001439eff3a4f44ec0ac"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/handoff.json",
+      "sha256": "54cd1f67f05f167baf7f5189de4a5e31265081c701ec40b95523be59519cfec1"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/speculative.json",
+      "sha256": "ef4af69246ca097c63d84fe30f937943b6679d148fcc96f5645f0dd594fab0c6"
+    },
+    {
+      "path": "public/tradeoffs/mechanisms/cost_model.json",
+      "sha256": "1f542be10b542116c5de19c96739aceb3b3016cf89f72abc9ef4ed0edc617b42"
+    }
+  ]
+}
