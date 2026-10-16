@@ -161,7 +161,8 @@ function Results({
         role="status"
         className="mt-3 text-sm text-neutral-700 dark:text-neutral-300"
       >
-        At {rate} req/s, disaggregation cuts p99 inter-token latency{" "}
+        At {rate} req/s, against colocation without chunked prefill,
+        disaggregation cuts p99 inter-token latency{" "}
         <strong>{ratio.toFixed(1)}×</strong>; TPOT p99 {ms(c.tpot_p99)} →{" "}
         {ms(d.tpot_p99)}.
       </p>

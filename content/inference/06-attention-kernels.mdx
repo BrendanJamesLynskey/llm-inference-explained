@@ -35,8 +35,12 @@ and carry on. At the end, divide by $l$. The result is exact, not an
 approximation: the widget below checks it against the textbook version.
 
 FlashAttention-2 reorganised the loops and the work split across threads for
-better utilisation; later versions target newer GPUs. The tiling idea is
-the same.
+better utilisation. FlashAttention-3
+([Shah et al. 2024](https://arxiv.org/abs/2407.08608)) targets Hopper
+(H100): it overlaps the matrix multiplies with the softmax asynchronously and
+adds FP8. FlashAttention-4, per the
+[project's README](https://github.com/Dao-AILab/flash-attention), is written
+for Hopper and Blackwell (B200). The tiling idea is the same.
 
 **Decode has a different problem.** One new query per sequence, attending
 over a long cache. A kernel that parallelises over batch × heads has too

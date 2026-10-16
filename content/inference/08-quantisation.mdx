@@ -77,7 +77,11 @@ weights once the batch holds about 115,000 tokens of context in total
 
 A symmetric $k$-bit quantiser with scale $s$ stores
 $\hat{x} = s \cdot \operatorname{round}(x/s)$ with
-$\operatorname{round}(x/s) \in [-2^{k-1}, 2^{k-1}-1]$; methods differ in how they
+$\operatorname{round}(x/s)$ clipped to $[-(2^{k-1}-1),\, 2^{k-1}-1]$ ($-7$ to $7$ for
+INT4, $-127$ to $127$ for INT8), the restricted range
+[Numerics, chapter 5](https://numerics-explained.vercel.app/learn/05-quantisation-basics)
+uses: the two's-complement code $-2^{k-1}$ is left unused so the grid is
+symmetric about zero, though some kernels use the full range. Methods differ in how they
 choose $s$ (per tensor, per channel, per group) and which errors they
 minimise.
 

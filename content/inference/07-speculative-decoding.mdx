@@ -41,8 +41,17 @@ memory-bound, and the verified positions compete with other users'.
 **Variants.** **Medusa** adds several extra decoding heads to the target
 itself, each predicting a token further ahead, and verifies a tree of
 candidates in one pass. **EAGLE** drafts at the level of the target's
-hidden features rather than tokens, with a light head. Both avoid running
-a separate draft model.
+hidden features rather than tokens, with a light head; EAGLE-2
+([Li et al. 2024](https://arxiv.org/abs/2406.16858)) grows its draft tree
+dynamically and EAGLE-3 ([Li et al. 2025](https://arxiv.org/abs/2503.01840))
+drafts from several of the target's layers. Models trained with
+**multi-token prediction** heads can draft with those heads
+([Architectures, chapter 7](https://llm-architectures-explained.vercel.app/learn/07-multi-token-prediction)).
+All of these avoid running a separate draft model. Current engines also verify
+a **tree** of drafts in one pass rather than a single chain, and offer
+**n-gram (prompt-lookup) drafting**, which copies continuations from the
+prompt and costs no model at all
+([vLLM's speculative decoding docs](https://docs.vllm.ai/en/latest/features/speculative_decoding/)).
 
 </Layer>
 

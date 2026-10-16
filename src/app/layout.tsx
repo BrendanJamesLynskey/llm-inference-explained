@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · LLM Inference Explained",
   },
   description:
-    "An interactive explainer of real LLM inference: the generation loop, the KV cache, rooflines, batching, paging, attention kernels, speculative decoding, quantisation, parallelism and serving metrics.",
+    "An interactive explainer of real LLM inference: the generation loop, the KV cache, rooflines, batching, paging, attention kernels, speculative decoding, quantisation, parallelism, serving metrics and disaggregated serving, with the serving simulator running live in your browser.",
 };
 
 export default function RootLayout({
