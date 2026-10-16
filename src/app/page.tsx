@@ -60,18 +60,20 @@ export default function HomePage(): JSX.Element {
         <div>
           <p className="max-w-2xl text-lg text-neutral-600 dark:text-neutral-300">
             An interactive guide to how real systems serve language models, from
-            the KV cache to disaggregated serving, running tested code in your
-            browser.
+            the KV cache to disaggregated serving.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6">
             <StartButton href="/learn/01-generation-loop" />
+          </div>
+          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            New to transformers?{" "}
             <a
               href={DECODER_URL}
-              className="focus-ring inline-flex min-h-11 items-center rounded border border-neutral-300 px-4 py-2 text-sm font-medium hover:border-accent dark:border-neutral-700"
+              className="focus-ring rounded font-medium underline decoration-neutral-400 underline-offset-4 hover:decoration-current"
             >
               First, how one forward pass works
             </a>
-          </div>
+          </p>
         </div>
         <figure
           data-hero-figure
