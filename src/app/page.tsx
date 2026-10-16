@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CheckedStrip, StartButton } from "@/components/ui/Landing";
 import { HeroFlopsSvg } from "@/components/viz/HeroFlopsSvg";
 import { heroPreview } from "@/lib/inference/heroPreview";
 import {
@@ -49,40 +50,33 @@ export default function HomePage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:py-20">
-      <section className="grid items-center gap-10 lg:grid-cols-[1fr_auto]">
+      <p className="font-mono text-xs uppercase tracking-widest text-accent dark:text-indigo-300">
+        LLM Inference Explained
+      </p>
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
+        How a model actually generates text, one token at a time.
+      </h1>
+      <div className="mt-6 grid items-start gap-8 md:grid-cols-[1fr_auto]">
         <div>
-          <p className="font-mono text-xs uppercase tracking-widest text-accent dark:text-indigo-300">
-            LLM Inference Explained
+          <p className="max-w-2xl text-lg text-neutral-600 dark:text-neutral-300">
+            An interactive guide to how real systems serve language models, from
+            the KV cache to disaggregated serving, running tested code in your
+            browser.
           </p>
-          <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-            How a model actually generates text, one token at a time.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg text-neutral-600 dark:text-neutral-300">
-            A forward pass makes one prediction. Serving a model means running
-            that pass thousands of times a second for many users at once. These
-            chapters cover what real inference systems do about it: the KV
-            cache, the roofline, batching, paged memory, FlashAttention,
-            speculative decoding, quantisation, parallelism, the metrics that
-            judge them, and disaggregated prefill and decode, with a live
-            simulator. Every interactive runs tested code in your browser.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/learn/01-generation-loop"
-              className="focus-ring rounded bg-accent px-4 py-2 text-sm font-medium text-accent-fg hover:opacity-90"
-            >
-              Start with chapter 1 →
-            </Link>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <StartButton href="/learn/01-generation-loop" />
             <a
               href={DECODER_URL}
-              className="focus-ring rounded border border-neutral-300 px-4 py-2 text-sm font-medium hover:border-accent dark:border-neutral-700"
+              className="focus-ring inline-flex min-h-11 items-center rounded border border-neutral-300 px-4 py-2 text-sm font-medium hover:border-accent dark:border-neutral-700"
             >
               First, how one forward pass works
             </a>
           </div>
         </div>
-
-        <figure className="mx-auto w-full max-w-[300px] rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <figure
+          data-hero-figure
+          className="mx-auto w-full max-w-[300px] rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+        >
           <HeroFlopsSvg data={preview} />
           <figcaption className="mt-3 text-xs text-neutral-600 dark:text-neutral-400">
             Generating {n} tokens with a tiny decoder, computed on the server
@@ -101,9 +95,30 @@ export default function HomePage(): JSX.Element {
             </Link>
           </figcaption>
         </figure>
+      </div>
+      <CheckedStrip href="/about#numbers">
+        The serving simulator in chapters 11&ndash;14 is
+        Disaggregated_Inference_Sim&apos;s own engine, copied byte for byte from
+        a pinned commit, and CI requires every request&apos;s timestamps to
+        match its Python original; the tiny model&apos;s cached logits are
+        bit-identical to full recomputation.
+      </CheckedStrip>
+      <section aria-labelledby="learn-heading" className="mt-12">
+        <h2 id="learn-heading" className="text-xl font-semibold tracking-tight">
+          What you&apos;ll learn
+        </h2>
+        <p className="mt-4 max-w-2xl text-neutral-600 dark:text-neutral-300">
+          A forward pass makes one prediction. Serving a model means running
+          that pass thousands of times a second for many users at once. These
+          chapters cover what real inference systems do about it: the KV cache,
+          the roofline, batching, paged memory, FlashAttention, speculative
+          decoding, quantisation, parallelism, the metrics that judge them, and
+          disaggregated prefill and decode, with a live simulator. Every
+          interactive runs tested code in your browser.
+        </p>
       </section>
 
-      <nav aria-label="Ways in" className="mt-16 grid gap-4 sm:grid-cols-3">
+      <nav aria-label="Ways in" className="mt-12 grid gap-4 sm:grid-cols-3">
         {ENTRY_POINTS.map((e) => (
           <Link
             key={e.href}
