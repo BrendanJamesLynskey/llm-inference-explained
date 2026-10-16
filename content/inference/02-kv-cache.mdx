@@ -6,6 +6,10 @@ chapter, and the generation loop from [chapter 1](/learn/01-generation-loop).
 
 </Callout>
 
+The cache filling on a real tiny decoder (by default the one trained on the Training site): each step adds one column of keys and values per block and reads all of them.
+
+<KvFill />
+
 <Layer kind="concept">
 
 In every attention layer, each position computes a **query**, a **key** and
@@ -24,7 +28,7 @@ key and value, appends the key and value, and attends over the whole cache.
 Everything else in the step (the MLP, the output head) only ever needed the
 new position anyway.
 
-This is not an approximation. Below, a real (untrained) model generates
+This is not an approximation. Below, a real tiny model (by default the one trained on the Training site) generates
 with the cache, and at every step the full sequence is also recomputed from
 scratch without one. The two logit vectors are compared number by number.
 They match **exactly**, because the cached path performs the same floating-point

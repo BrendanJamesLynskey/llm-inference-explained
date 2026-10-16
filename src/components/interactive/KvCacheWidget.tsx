@@ -7,7 +7,7 @@
  */
 import { useRef, useState } from "react";
 
-import { ActionButton, Stat } from "@/components/ui/Controls";
+import { ActionButton, Segmented, Stat } from "@/components/ui/Controls";
 import { WidgetFrame } from "@/components/ui/WidgetFrame";
 import {
   TOY_CONFIG,
@@ -15,6 +15,7 @@ import {
   toyEncode,
   toyLabel,
   toyWeights,
+  type ToyKind,
 } from "@/lib/inference/toyModel";
 import {
   decodeStep,
@@ -25,6 +26,8 @@ import {
 } from "@/lib/transformer/kvcache";
 import { forwardTyped } from "@/lib/transformer/model";
 import { argmax } from "@/lib/transformer/sampling";
+
+import { useToyWeights } from "./useToyWeights";
 
 type Row = { pos: number; cached: number; uncached: number; maxDiff: number };
 
@@ -40,10 +43,12 @@ export function KvCacheWidget(): JSX.Element {
   const [ids, setIds] = useState<number[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
   const [promptLen, setPromptLen] = useState(0);
+  const [kind, setKind] = useState<ToyKind>("trained");
+  const { ready } = useToyWeights(kind);
   const cache = useRef<KVCache | null>(null);
 
   function step(): void {
-    const w = toyWeights();
+    const w = toyWeights(kind);
     if (!cache.current) {
       const p = toyEncode(PROMPT);
       const out = prefill(p, TOY_CONFIG, w);
@@ -103,15 +108,30 @@ export function KvCacheWidget(): JSX.Element {
     <WidgetFrame
       testId="kv-cache"
       title="Watch the cache fill, and check it against recomputation"
-      caption="Each click runs one step of the same untrained toy model with greedy decoding. The cache gains one column per layer; a full uncached forward pass runs alongside and the logits are compared exactly."
+      caption={`Each click runs one step of the toy model (${kind === "trained" ? "trained on one book" : "random init"}) with greedy decoding. The cache gains one column per layer; a full uncached forward pass runs alongside and the logits are compared exactly.`}
     >
       <div className="flex flex-wrap gap-2">
-        <ActionButton onClick={step} disabled={ids.length >= TOY_MAX_LEN}>
+        <ActionButton
+          onClick={step}
+          disabled={ids.length >= TOY_MAX_LEN || !ready}
+        >
           {cache.current ? "Decode one token" : `Prefill “${PROMPT}”`}
         </ActionButton>
         <ActionButton variant="secondary" onClick={reset}>
           Reset
         </ActionButton>
+        <Segmented
+          label="Weights"
+          value={kind}
+          options={[
+            { value: "trained", label: "trained" },
+            { value: "random", label: "random init" },
+          ]}
+          onChange={(k) => {
+            reset();
+            setKind(k);
+          }}
+        />
       </div>
 
       <div

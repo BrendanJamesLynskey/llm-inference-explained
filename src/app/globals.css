@@ -141,3 +141,64 @@
     @apply my-1;
   }
 }
+
+/* Animation equations (copied from Inference Trade-offs Explained @239d29b with its mechanism animations, brief 41): every highlightable term
+ * carries its colour as an underline, and the term the animation is on gets
+ * a tinted background. Outside @layer: the classes only appear in KaTeX
+ * output. Colours: src/lib/viz/palette.ts (Okabe-Ito). A new key must be
+ * added to the list below. */
+.eq-panel .katex-display {
+  margin: 0.25rem 0;
+}
+.eq-panel [class*="hl-"] {
+  border-bottom: 2px solid transparent;
+  border-radius: 2px;
+  padding: 0 1px;
+  transition: background-color 0.15s;
+}
+.eq-panel .hl-a {
+  border-color: #0072b2;
+}
+.eq-panel .hl-w,
+.eq-panel .hl-b {
+  border-color: #d55e00;
+}
+.eq-panel .hl-p,
+.eq-panel .hl-acc {
+  border-color: #56b4e9;
+}
+.eq-panel .hl-c {
+  border-color: #cc79a7;
+}
+.eq-panel .hl-t,
+.eq-panel .hl-fill,
+.eq-panel .hl-u,
+.eq-panel .hl-n,
+.eq-panel .hl-bw,
+.eq-panel .hl-x,
+.eq-panel .hl-y {
+  border-color: #737373;
+}
+.eq-panel[data-hl~="a"] .hl-a,
+.eq-panel[data-hl~="b"] .hl-b,
+.eq-panel[data-hl~="w"] .hl-w,
+.eq-panel[data-hl~="p"] .hl-p,
+.eq-panel[data-hl~="acc"] .hl-acc,
+.eq-panel[data-hl~="c"] .hl-c,
+.eq-panel[data-hl~="t"] .hl-t,
+.eq-panel[data-hl~="fill"] .hl-fill,
+.eq-panel[data-hl~="u"] .hl-u,
+.eq-panel[data-hl~="n"] .hl-n,
+.eq-panel[data-hl~="bw"] .hl-bw,
+.eq-panel[data-hl~="x"] .hl-x,
+.eq-panel[data-hl~="y"] .hl-y {
+  background-color: rgb(0 114 178 / 0.18);
+  border-color: #0072b2;
+}
+
+/* Phones: shrink the animation equations so they fit the panel. */
+@media (max-width: 639px) {
+  .eq-panel .katex-display > .katex {
+    font-size: 0.82em;
+  }
+}

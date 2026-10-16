@@ -8,7 +8,10 @@
         "http://localhost:3000/learn",
         "http://localhost:3000/learn/02-kv-cache",
         "http://localhost:3000/learn/04-batching",
-        "http://localhost:3000/learn/13-live-simulator"
+        "http://localhost:3000/learn/13-live-simulator",
+        "http://localhost:3000/learn/01-generation-loop",
+        "http://localhost:3000/learn/06-attention-kernels",
+        "http://localhost:3000/learn/11-why-disaggregate"
       ],
       "numberOfRuns": 3
     },

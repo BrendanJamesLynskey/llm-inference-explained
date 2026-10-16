@@ -51,7 +51,10 @@ export function Slider({
   );
 }
 
-/** A radio group drawn as a segmented control. */
+/**
+ * A radio group drawn as a segmented control. Every option is at least
+ * 44 px tall (the visual standard's touch target).
+ */
 export function Segmented<T extends string>({
   label,
   value,
@@ -80,7 +83,7 @@ export function Segmented<T extends string>({
             role="radio"
             aria-checked={value === o.value}
             onClick={() => onChange(o.value)}
-            className={`focus-ring rounded px-2 py-1 font-mono ${
+            className={`focus-ring inline-flex min-h-11 items-center rounded px-2 py-1 font-mono ${
               value === o.value
                 ? "bg-accent text-accent-fg"
                 : "text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800"
@@ -145,8 +148,8 @@ export function ActionButton({
       disabled={disabled}
       className={
         variant === "primary"
-          ? "focus-ring rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-40"
-          : "focus-ring rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
+          ? "focus-ring min-h-11 rounded bg-accent px-4 py-1.5 text-sm font-medium text-accent-fg hover:opacity-90 disabled:opacity-40"
+          : "focus-ring min-h-11 rounded border border-neutral-300 px-3 py-1.5 text-xs text-neutral-700 hover:bg-neutral-100 disabled:opacity-40 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"
       }
     >
       {children}

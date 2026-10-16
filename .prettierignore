@@ -19,3 +19,11 @@ tests/unit/fixtures/
 # and the recorded workloads (scripts/disagg_reference.py).
 src/lib/disagg/vendor/
 public/disagg/
+
+# Vendored byte for byte from Inference Trade-offs Explained (brief 41,
+# src/lib/tradeoffs/VENDORED.json): the engine copy and the recorded
+# scenarios; public/data/ holds the trained toy weights from
+# transformer-explainer.
+src/lib/tradeoffs/vendor/
+public/tradeoffs/
+public/data/

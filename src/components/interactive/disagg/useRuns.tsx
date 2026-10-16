@@ -48,7 +48,7 @@ function getWorker(): Worker | null {
   return worker;
 }
 
-function simulateAll<K extends string>(
+export function simulateAll<K extends string>(
   rows: Row[],
   cfgs: Record<K, SimConfig>,
 ): Promise<Record<K, Run>> {

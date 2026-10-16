@@ -5,6 +5,10 @@ The explainer's [Stacking blocks](https://transformer-decoder-explained.vercel.a
 
 </Callout>
 
+Tensor parallelism's ring all-reduce, chunk by chunk, priced by the serving simulator's cost model.
+
+<RingMechanism />
+
 <Layer kind="concept">
 
 Llama-3-70B's weights alone are 141.10 GB in BF16: they don't fit on one
@@ -33,6 +37,8 @@ step's time.
 [Training, chapter 12](https://transformer-training-explained.vercel.app/training/12-model-parallelism)
 gives the same idle time as $(n-1)/m$ of the useful work; both describe the
 same schedule.
+
+<PipelineMechanism />
 
 **Expert parallelism (EP)** applies to mixture-of-experts models, whose MLP
 is many "expert" MLPs and a router that sends each token to its top-$k$.

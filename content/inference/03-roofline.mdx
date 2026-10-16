@@ -5,6 +5,10 @@ The [generation loop](/learn/01-generation-loop) (prefill vs decode) and the
 
 </Callout>
 
+A decode step climbing the roofline as more sequences share it, priced by the serving simulator's cost model.
+
+<RooflineClimb />
+
 <Layer kind="concept">
 
 A GPU step can be slow for two different reasons: it has too much

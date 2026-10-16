@@ -1,8 +1,12 @@
 import Link from "next/link";
 
 import { CheckedStrip, StartButton } from "@/components/ui/Landing";
-import { HeroFlopsSvg } from "@/components/viz/HeroFlopsSvg";
-import { heroPreview } from "@/lib/inference/heroPreview";
+import ServingTeaserHero, {
+  type TeaserData,
+} from "@/components/heroes/ServingTeaserHero";
+import { runPlain } from "@/lib/disagg/engine";
+import { heroLanes, type HeroFile } from "@/lib/disagg/hero";
+import heroFile from "../../public/disagg/hero.json";
 import {
   ARCHITECTURES_URL,
   DECODER_URL,
@@ -36,17 +40,32 @@ const ENTRY_POINTS = [
   },
 ] as const;
 
+/** The hero's runs: the vendored engine, at build time, on hero.json. */
+function teaserData(): TeaserData {
+  const f = heroFile as unknown as HeroFile;
+  const run = (key: "colocated" | "disagg") => {
+    const m = f.modes.find((x) => x.key === key)!;
+    const r = runPlain(m.cfg, f.rows);
+    return { lanes: heroLanes(r.result.reqs), metrics: r.metrics };
+  };
+  return {
+    colocated: run("colocated"),
+    disagg: run("disagg"),
+    requests: f.rows.length,
+    commit: f.commit,
+  };
+}
+
 /**
- * Landing page: what the site is, one real computation, and the ways in.
- *
- * Server Component with no client JavaScript of its own (the pattern of
- * transformer-explainer's landing page): the figure is computed on the
- * server by the same KV-cache code the chapters run, and drawn as static SVG.
+ * Landing page: what the site is, the live simulator in one picture, and the
+ * ways in. The hero's first frame is computed on the server by the vendored
+ * engine (brief 41); in the browser the same engine re-runs all the requests
+ * in a Web Worker when the hero comes into view.
  */
 export default function HomePage(): JSX.Element {
-  const preview = heroPreview();
-  const n = preview.cached.length;
-  const pct = (preview.cached[n - 1]! / preview.uncached[n - 1]!) * 100;
+  const data = teaserData();
+  const ms = (x: number) => `${(x * 1e3).toFixed(x < 0.1 ? 1 : 0)} ms`;
+  const s2 = (x: number) => `${x.toFixed(2)} s`;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12 sm:py-20">
@@ -56,48 +75,56 @@ export default function HomePage(): JSX.Element {
       <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">
         How a model actually generates text, one token at a time.
       </h1>
-      <div className="mt-6 grid items-start gap-8 md:grid-cols-[1fr_auto]">
-        <div>
-          <p className="max-w-2xl text-lg text-neutral-600 dark:text-neutral-300">
-            An interactive guide to how real systems serve language models, from
-            the KV cache to disaggregated serving.
-          </p>
-          <div className="mt-6">
-            <StartButton href="/learn/01-generation-loop" />
-          </div>
-          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
-            New to transformers?{" "}
-            <a
-              href={DECODER_URL}
-              className="focus-ring rounded font-medium underline decoration-neutral-400 underline-offset-4 hover:decoration-current"
-            >
-              First, how one forward pass works
-            </a>
-          </p>
+      <div className="mt-6">
+        <p className="max-w-2xl text-lg text-neutral-600 dark:text-neutral-300">
+          An interactive guide to how real systems serve language models, from
+          the KV cache to disaggregated serving.
+        </p>
+        <div className="mt-6">
+          <StartButton href="/learn/01-generation-loop" />
         </div>
-        <figure
-          data-hero-figure
-          className="mx-auto w-full max-w-[300px] rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
-        >
-          <HeroFlopsSvg data={preview} />
-          <figcaption className="mt-3 text-xs text-neutral-600 dark:text-neutral-400">
-            Generating {n} tokens with a tiny decoder, computed on the server
-            for this page. With the KV cache it does {pct.toFixed(0)}% of the
-            arithmetic of recomputing everything each step, and its logits
-            differ from the recomputed ones by{" "}
-            {preview.maxDiff === 0
-              ? "exactly 0"
-              : preview.maxDiff.toExponential(1)}
-            .{" "}
-            <Link
-              href="/learn/02-kv-cache"
-              className="focus-ring rounded text-accent underline underline-offset-2 dark:text-indigo-300"
-            >
-              See why
-            </Link>
-          </figcaption>
-        </figure>
+        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+          New to transformers?{" "}
+          <a
+            href={DECODER_URL}
+            className="focus-ring rounded font-medium underline decoration-neutral-400 underline-offset-4 hover:decoration-current"
+          >
+            First, how one forward pass works
+          </a>
+        </p>
       </div>
+      <figure data-hero-figure className="mt-8 min-w-0">
+        <ServingTeaserHero data={data} />
+        <figcaption className="mt-2 max-w-3xl text-sm text-neutral-600 dark:text-neutral-400">
+          Split, the decode GPUs never wait behind a prompt: on these{" "}
+          {data.requests} requests the slowest 1% of gaps between tokens (ITL
+          p99) falls from {ms(data.colocated.metrics.itl_p99)} to{" "}
+          {ms(data.disagg.metrics.itl_p99)}, while the first token comes later
+          (TTFT p99 {s2(data.colocated.metrics.ttft_p99)} against{" "}
+          {s2(data.disagg.metrics.ttft_p99)}). The colocated side here has no
+          chunked prefill, the usual first fix (
+          <Link
+            href="/learn/04-batching"
+            className="focus-ring rounded text-accent underline underline-offset-2 dark:text-indigo-300"
+          >
+            chapter 4
+          </Link>
+          ); with every lever open to both, the{" "}
+          <a
+            href={`${TRADEOFFS_URL}/learn/13-combining-levers`}
+            className="focus-ring rounded text-accent underline underline-offset-2 dark:text-indigo-300"
+          >
+            Trade-offs site
+          </a>{" "}
+          finds the split no longer wins on any workload&apos;s goodput.{" "}
+          <Link
+            href="/learn/13-live-simulator"
+            className="focus-ring rounded text-accent underline underline-offset-2 dark:text-indigo-300"
+          >
+            Run the simulator yourself
+          </Link>
+        </figcaption>
+      </figure>
       <CheckedStrip href="/about#numbers">
         The serving simulator in chapters 11&ndash;14 is
         Disaggregated_Inference_Sim&apos;s own engine, copied byte for byte from
