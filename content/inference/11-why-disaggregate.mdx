@@ -13,6 +13,8 @@ The same eight GPUs serving the same requests, colocated or split into a prefill
 
 <Layer kind="concept">
 
+<span id="i-conflict" />
+
 Chapters 1–10 ran prefill and decode on the **same GPUs**. That is
 _colocated_ serving, and it has a built-in conflict. Prefill is a long,
 compute-bound step: a 2,048-token prompt keeps Llama-3-70B on four H100s
@@ -30,6 +32,8 @@ that share each step with decodes. **Disaggregation** removes it: run
 prefill on one pool of GPUs and decode on another, and hand each request's
 KV cache from the first pool to the second. Decode steps then never wait
 for a prefill.
+
+<span id="i-itl" />
 
 The interactive runs the simulator from the companion
 [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim)
@@ -58,11 +62,15 @@ parallelism, which the simulator does not model.
 
 <Layer kind="concept">
 
+<span id="i-gain" />
+
 **What you gain.** No interference, so TPOT is steady: at 4 req/s its p99
 falls from 25.9 ms to 15.2 ms and the share of requests meeting both SLOs
 rises from 97.8% to 99.7%. At 6 req/s the gap is wider: 64.7% against
 89.9%. Each pool can also be sized, parallelised and even built from a
 different GPU for its own phase (chapter 12).
+
+<span id="i-pay" />
 
 **What you pay.** Every prompt's KV cache crosses a link (chapter 12), so
 the link and its queue become a new place for requests to wait. The pools
@@ -160,3 +168,70 @@ the mechanism, not a prediction for any one serving engine.
 - The hardware underneath: [Racks, chapter 8: disaggregated inference on a rack](https://ai-racks-explained.vercel.app/learn/08-disaggregated-inference) (the Racks site, in the Hardware track): one 72-GPU rack split into prefill and decode pools on the same simulator, with the pool split, the KV link and a context-optimised part as choices
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i11-q1"
+  n={1}
+  choices={[
+    "At the median: every token is late",
+    "In the tail: most tokens are on time, a few wait for a whole prefill",
+    "Nowhere: the median and the tail are the same",
+  ]}
+  answer={1}
+  q="Colocated serving runs each waiting prefill whole. Where do its stalls show in inter-token latency?"
+  href="#i-itl"
+  more="The recorded runs"
+>
+  In the tail: at 4 req/s the medians are about the same either way, but the
+  colocated p99 and worst gap are an order of magnitude longer, because a
+  stalled token waits for a whole prefill.
+</Check>
+
+<Check
+  id="i11-q2"
+  n={2}
+  input="number"
+  v="ch11.disagg.tpot99"
+  fmt="ms1"
+  q="At 4 req/s, what is the disaggregated cluster's TPOT p99, in ms (the recorded run)?"
+  href="#i-gain"
+  more="What you gain"
+>
+  <V v="ch11.disagg.tpot99" fmt="ms1" />, against
+  <V v="ch11.coloc.tpot99" fmt="ms1" /> colocated: decode steps never wait for a
+  prefill. SLO attainment rises from <V v="ch11.coloc.slo" fmt="pct1" /> to
+  <V v="ch11.disagg.slo" fmt="pct1" />.
+</Check>
+
+<Check
+  id="i11-q3"
+  n={3}
+  choices={[
+    "Better: prefills no longer share the GPUs",
+    "Worse here: one prefill instance serves every prompt, where colocated spreads them over two",
+    "Unchanged",
+  ]}
+  answer={1}
+  q="On the same eight GPUs, what happens to time to first token when you disaggregate?"
+  href="#i-pay"
+  more="What you pay"
+>
+  It can get worse: in the recorded run the TTFT p99 rises, because the
+  disaggregated cluster has one prefill instance and the colocated one two. Pool
+  sizes must match the workload.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Colocated serving makes prefill and decode wait for each other.
+- Disaggregation runs them in separate pools and hands each request's KV cache across.
+- It flattens the decode tail (TPOT, ITL) and can cost TTFT.
+- Chunked prefill bounds the same stalls on colocated GPUs; with every lever on both sides, disaggregation's goodput edge vanishes in the Trade-offs sweep.
+
+<Keep>Disaggregate for the decode tail; size the pools for the workload.</Keep>
+
+</Remember>

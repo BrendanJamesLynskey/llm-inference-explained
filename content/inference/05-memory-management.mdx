@@ -15,12 +15,16 @@ Continuous batching wants as many sequences resident as memory allows. The
 KV cache decides that, and caches grow one token at a time to a length
 nobody knows in advance.
 
+<span id="i-slabs" />
+
 The naive answer is to reserve, per request, a contiguous slab big enough
 for the **maximum** length it could reach. Most requests stop far short, so
 most of each slab sits empty: memory reserved but never used, and
 fragmentation between slabs as requests come and go. The vLLM paper
 profiled existing systems storing actual token states in only 20.4% to
 38.2% of their KV-cache memory.
+
+<span id="i-paging" />
 
 **PagedAttention** borrows the operating system's answer to the same
 problem: virtual memory with pages.
@@ -32,6 +36,8 @@ problem: virtual memory with pages.
   waste is the unfilled tail of each sequence's last block.
 - The attention kernel follows the block table to gather keys and values,
   so the blocks don't need to be contiguous.
+
+<span id="i-more" />
 
 Paging makes three more things easy:
 
@@ -118,3 +124,72 @@ and track prefix-cache entries with their own eviction rules.
 - Agent Harnesses Explained: [prompt caching](https://agent-harnesses-explained.vercel.app/learn/04-prompt-caching), prefix reuse seen from an agent's side: the stable prefix a harness keeps across turns, and what breaks it
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i05-q1"
+  n={1}
+  choices={[
+    "Each sequence's whole maximum length",
+    "Only the unfilled tail of each sequence's last block",
+    "Nothing at all",
+  ]}
+  answer={1}
+  q="With PagedAttention, what KV memory is wasted?"
+  href="#i-paging"
+  more="PagedAttention"
+>
+  Blocks are allocated as a sequence grows, so the only waste is the rest of its
+  last block. Reserving a slab for the maximum length wastes most of it.
+</Check>
+
+<Check
+  id="i05-q2"
+  n={2}
+  choices={[
+    "They copy the prompt's blocks at once",
+    "They point their block tables at the same physical blocks, and copy one only when it is written",
+    "They cannot share",
+  ]}
+  answer={1}
+  q="Two requests share a system prompt. How does paging let them share its cache?"
+  href="#i-more"
+  more="What paging makes easy"
+>
+  Shared blocks with a reference count, and copy-on-write when one of them
+  writes into a shared, partly full block. Prefix caching keeps such blocks for
+  the next request with that prefix.
+</Check>
+
+<Check
+  id="i05-q3"
+  n={3}
+  choices={[
+    "Swap its blocks to CPU memory, or drop them and recompute later",
+    "Shrink every other sequence's cache",
+    "Crash the request",
+  ]}
+  answer={0}
+  q="A running sequence needs a block and none is free. What can the scheduler do with the sequence it preempts?"
+  href="#i-more"
+  more="What paging makes easy"
+>
+  Swap or recompute: either move its blocks to CPU memory, or drop them and
+  later re-run a prefill over the prompt and the output so far.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- KV caches grow a token at a time to a length nobody knows in advance.
+- Reserving for the maximum length wastes most of the memory.
+- PagedAttention: fixed-size blocks and a block table per sequence, like virtual memory.
+- Paging enables prefix sharing (copy-on-write), preemption (swap or recompute) and admission control.
+
+<Keep>
+  With paging, the waste is at most one partly filled block per sequence.
+</Keep>
+
+</Remember>

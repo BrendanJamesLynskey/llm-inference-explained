@@ -12,6 +12,8 @@ Every prompt's KV cache crossing the link from the prefill pool to the decode po
 
 <Layer kind="concept">
 
+<span id="i-cargo" />
+
 Disaggregation turns the KV cache into **cargo**. When a prompt finishes
 prefill, its cache (every layer's keys and values for every prompt token)
 must reach the decode pool before the request can generate its second
@@ -30,6 +32,8 @@ simulator's link table (bandwidth per direction):
 | InfiniBand NDR 400G               | 50 GB/s    | 5.4 ms         |
 | 100 GbE                           | 12.5 GB/s  | 21.5 ms        |
 | 25 GbE                            | 3.125 GB/s | 85.9 ms        |
+
+<span id="i-link-fill" />
 
 Set that against the prefill that produced the cache, 59.0 ms for this
 prompt on one H100. On NVLink or InfiniBand the transfer is a few percent
@@ -67,6 +71,8 @@ Three ways to make the cargo cheaper, all in the interactive:
 <KvHandoffWidget />
 
 <Layer kind="concept">
+
+<span id="i-compression" />
 
 **Compression where the link is the bottleneck.** On 25 GbE at 14 req/s
 the uncompressed link is 94.0% busy and the hand-off p99 reaches
@@ -173,3 +179,65 @@ equal layers and a link that carries one slice at a time.
 - The hardware underneath: [Racks, chapter 8: disaggregated inference on a rack](https://ai-racks-explained.vercel.app/learn/08-disaggregated-inference) (the Racks site, in the Hardware track): the hand-off inside one rack over NVLink, against network ports between racks; [chapter 4](https://ai-racks-explained.vercel.app/learn/04-scale-up-nvlink) and [chapter 5](https://ai-racks-explained.vercel.app/learn/05-scale-out-network) show those two networks
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i12-q1"
+  n={1}
+  input="number"
+  v="ch12.bytes"
+  fmt="mb1"
+  q="A 2,048-token Llama-3-8B prompt in BF16: how many MB of KV cache does it hand off?"
+  href="#i-cargo"
+  more="The cargo"
+>
+  <V v="ch12.bytes" fmt="mb1" />: prompt tokens × <V v="ch02.kv8b" fmt="kib" />{" "}
+  per token.
+</Check>
+
+<Check
+  id="i12-q2"
+  n={2}
+  input="number"
+  v="ch12.eth25"
+  fmt="ms1"
+  q="And how long does it take over 25 GbE, in ms?"
+  href="#i-link-fill"
+  more="Against the prefill"
+>
+  <V v="ch12.eth25" fmt="ms1" />, longer than the prefill that made it; that
+  link fills at about <V v="ch12.eth25.rate" fmt="num" /> hand-offs per second
+  of this size.
+</Check>
+
+<Check
+  id="i12-q3"
+  n={3}
+  choices={[
+    "A free speed-up on any link",
+    "A fix for a saturated link: on a link with headroom it changes TPOT not at all",
+    "It always hurts TPOT",
+  ]}
+  answer={1}
+  q="What is FP8 hand-off compression?"
+  href="#i-compression"
+  more="Compression"
+>
+  On 25 GbE at 14 req/s it takes TPOT p99 from
+  <V v="ch12.none.tpot99" fmt="ms1" /> to <V v="ch12.fp8.tpot99" fmt="ms1" />;
+  on InfiniBand at 8 req/s it changes nothing.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Every disaggregated request ships its prompt's KV cache: prompt tokens × KV bytes per token.
+- Transfer time is latency plus bytes over bandwidth; a busy link adds queueing.
+- The hand-off shows in TPOT, not TTFT, in the simulator.
+- Stream it layer by layer, compress it, or use a faster link.
+
+<Keep>A link fills at bandwidth ÷ hand-off bytes requests per second.</Keep>
+
+</Remember>

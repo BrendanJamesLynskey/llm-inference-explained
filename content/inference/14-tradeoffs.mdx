@@ -15,6 +15,8 @@ engine). Whether that trade pays depends on the model, the load and the
 link. The interactive sweeps the offered load from 2 to 14 req/s and runs
 both clusters at every point.
 
+<span id="i-small" />
+
 **Small models.** Llama-3-8B fits on one H100, and its prefills are short
 (59.0 ms for 2,048 tokens), so a colocated decode step is only ever
 delayed by a short prefill. On two colocated H100s it meets both SLOs for
@@ -33,6 +35,8 @@ fix is the ratio, not the idea: 2P1D meets 100.0% at every load from 2 to
 10 req/s (results.md §4). A fixed ratio is only right for one workload
 mix; production systems resize pools or route adaptively.
 
+<span id="i-slow" />
+
 **Slow links.** Over 25 GbE, Llama-3-70B's 671.1 MB hand-offs fill the
 link at about 4.7 req/s. Disaggregation then meets fewer SLOs than
 colocated serving at every load from 2 to 12 req/s (at 14 both fail): at
@@ -47,6 +51,8 @@ static power whichever way they are arranged: at 0.5 req/s static power is
 the energy comparison at low load still favours disaggregation (Llama-3-70B
 at 2 req/s: 4.190 J per output token disaggregated, 5.100 colocated), so
 the argument against it there is cost and complexity, not joules.
+
+<span id="i-alternatives" />
 
 **Alternatives.** Chunked prefill (chapter 4) bounds decode stalls on
 colocated GPUs without moving any KV cache, and is the usual first step.
@@ -172,3 +178,70 @@ coefficients are illustrative.
   sections 4, 6, 8 and 11
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i14-q1"
+  n={1}
+  choices={[
+    "It improves both latencies",
+    "It buys TPOT margin by spending TTFT: one prefill instance now serves every prompt",
+    "It meets fewer SLOs",
+  ]}
+  answer={1}
+  q="Llama-3-8B already meets its SLOs on two colocated H100s. What does disaggregating it change?"
+  href="#i-small"
+  more="Small models"
+>
+  At 8 req/s TPOT p99 improves and TTFT p99 worsens: margin on one SLO paid for
+  with the other.
+</Check>
+
+<Check
+  id="i14-q2"
+  n={2}
+  input="number"
+  v="ch14.eth25.rate70b"
+  tol={0.05}
+  q="Over 25 GbE, at about how many requests per second do Llama-3-70B's 2,048-token hand-offs fill the link?"
+  href="#i-slow"
+  more="Slow links"
+>
+  About <V v="ch14.eth25.rate70b" fmt="d1" />: 3.125 GB/s over each prompt's
+  hand-off. Above it the link queues, and disaggregation meets fewer SLOs than
+  colocated serving.
+</Check>
+
+<Check
+  id="i14-q3"
+  n={3}
+  choices={[
+    "Buy a faster link",
+    "Chunked prefill on colocated GPUs",
+    "Always disaggregate",
+  ]}
+  answer={1}
+  q="What is the usual first step against decode stalls, before disaggregating?"
+  href="#i-alternatives"
+  more="Alternatives"
+>
+  Chunked prefill bounds the stalls without moving any KV cache. With it and the
+  other levers on both sides, disaggregation no longer wins on goodput.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Disaggregation removes prefill stalls and adds a hand-off, a pool ratio and more machinery.
+- Small models trade one SLO's margin for the other's.
+- The wrong pool ratio, or a slow link, makes it worse than colocated serving.
+- Chunked prefill is the usual first step; simulate before you build.
+
+<Keep>
+  Disaggregate when the decode tail binds, prompts are long, the link has
+  headroom and the load is steady.
+</Keep>
+
+</Remember>

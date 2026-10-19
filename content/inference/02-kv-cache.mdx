@@ -16,6 +16,8 @@ In every attention layer, each position computes a **query**, a **key** and
 a **value** from its own hidden state. The causal mask means position _i_
 only ever looks at keys and values of positions 0…_i_.
 
+<span id="i-why-cache" />
+
 Now generate one more token. The new position needs its own query, and the
 keys and values of every earlier position. But those earlier keys and
 values were computed from earlier hidden states, which depend only on
@@ -27,6 +29,8 @@ values for every layer. Each decode step computes the new token's query,
 key and value, appends the key and value, and attends over the whole cache.
 Everything else in the step (the MLP, the output head) only ever needed the
 new position anyway.
+
+<span id="i-exact" />
 
 This is not an approximation. Below, a real tiny model (by default the one trained on the Training site) generates
 with the cache, and at every step the full sequence is also recomputed from
@@ -46,6 +50,8 @@ The cache turns each decode step from "process the whole sequence" into
 stores a key and a value vector per token per KV head, for as long as the
 sequence lives.
 
+<span id="i-size" />
+
 How big? For Llama-3-8B, which has 32 layers and 8 KV heads of 128
 dimensions, in BF16:
 
@@ -55,6 +61,8 @@ token**. Llama-3-70B (80 layers, 8 KV heads) needs 320 KiB per token. Sixteen
 of weights. On a GPU with 80 GB, the cache, not the weights, decides how
 many users you can serve at once. That is why the next chapters spend so
 much effort on it.
+
+<span id="i-shrink" />
 
 **Shrinking it.** Multi-head attention (MHA) keeps K and V for every head.
 **Multi-query attention** (MQA) shares one K/V head across all query heads.
@@ -134,3 +142,67 @@ tolerance, that every cached logit vector equals full recomputation's.
   DeepSeek-AI, [DeepSeek-V2](https://arxiv.org/abs/2405.04434) (MLA, arXiv:2405.04434)
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i02-q1"
+  n={1}
+  input="number"
+  v="ch02.kv8b"
+  fmt="kib"
+  tol={0}
+  q="Llama-3-8B (32 layers, 8 KV heads of 128 dimensions) in BF16: how many KiB of cache per token?"
+  href="#i-size"
+  more="How big"
+>
+  <V v="ch02.kv8b" fmt="kib" />: $2 \times 32 \times 8 \times 128 \times 2$
+  bytes, a key and a value per KV head per layer. Llama-3-70B needs
+  <V v="ch02.kv70b" fmt="kib" />.
+</Check>
+
+<Check
+  id="i02-q2"
+  n={2}
+  input="number"
+  v="ch02.mhaOverGqa"
+  tol={0}
+  q="How many times smaller is Llama 3's grouped-query cache than multi-head attention's would be?"
+  href="#i-shrink"
+  more="Shrinking it"
+>
+  <V v="ch02.mhaOverGqa" fmt="num" /> times: 32 query heads share 8 KV heads, 4
+  per group, with little quality loss.
+</Check>
+
+<Check
+  id="i02-q3"
+  n={3}
+  choices={[
+    "Slightly different: the cache is an approximation",
+    "Exactly the same, number for number",
+    "Different after a few hundred tokens",
+  ]}
+  answer={1}
+  q="Generating with the cache against recomputing everything from scratch: how do the logits compare?"
+  href="#i-exact"
+  more="Not an approximation"
+>
+  Exactly the same: earlier keys and values depend only on earlier tokens, and
+  the cached path does the same floating-point operations in the same order.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Appending a token cannot change the past, so earlier keys and values can be kept, not recomputed.
+- The cache is exact, not an approximation.
+- It costs $2 L h_{\text{KV}} d_{\text{head}}$ values per token, for as long as the sequence lives.
+- On a big GPU the cache, not the weights, decides how many users fit; GQA, MQA and MLA shrink it.
+
+<Keep>
+  Llama-3-8B: <V v="ch02.kv8b" fmt="kib" /> of BF16 cache per token.
+</Keep>
+
+</Remember>

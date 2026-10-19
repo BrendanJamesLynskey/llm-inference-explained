@@ -11,6 +11,8 @@ A decode step climbing the roofline as more sequences share it, priced by the se
 
 <Layer kind="concept">
 
+<span id="i-roofline" />
+
 A GPU step can be slow for two different reasons: it has too much
 **arithmetic** to do, or too many **bytes** to move from memory. The
 roofline model says a step takes whichever is longer:
@@ -26,6 +28,8 @@ arithmetic units wait for data. Above it the step is **compute-bound**.
 With the H100 figures in the simulator this site borrows (989 TFLOP/s dense
 BF16 and 3.35 TB/s, derated to 55% and 80% of peak), the ridge sits at
 **203 FLOP per byte**. For the A100 it is about 105.
+
+<span id="i-decode" />
 
 Now look at what a decode step does. To produce one token per sequence it
 must read **every weight** of the model once (the whole layer stack and the
@@ -46,6 +50,8 @@ Move the sliders below and watch the decode point climb as the batch grows.
 <RooflineWidget />
 
 <Layer kind="concept">
+
+<span id="i-batch" />
 
 That last observation is the economic engine of LLM serving. Batch 64
 sequences together and one decode step still reads the weights **once**,
@@ -128,3 +134,64 @@ shapes.
 - GPU Kernels Explained: [the memory hierarchy](https://gpu-kernels-explained.vercel.app/learn/01-memory-hierarchy) and [the roofline](https://gpu-kernels-explained.vercel.app/learn/02-roofline), animated level by level on an A100 and an H100
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i03-q1"
+  n={1}
+  input="number"
+  v="ch03.ridge"
+  fmt="int"
+  q="The simulator's derated H100 (989 TFLOP/s at 55%, 3.35 TB/s at 80%): where is its ridge point, in FLOP per byte?"
+  href="#i-roofline"
+  more="The roofline"
+>
+  <V v="ch03.ridge" fmt="int" /> FLOP per byte. A step with lower intensity
+  waits on memory; one with higher waits on arithmetic.
+</Check>
+
+<Check
+  id="i03-q2"
+  n={2}
+  input="number"
+  v="ch03.decode1.tps"
+  fmt="int"
+  q="Llama-3-8B, batch 1, 2,048 tokens of context: about how many tokens per second does decode make?"
+  href="#i-decode"
+  more="A decode step"
+>
+  About <V v="ch03.decode1.tps" fmt="int" />: each step reads every weight and
+  the cache to make one token, at an intensity of about
+  <V v="ch03.decode1.intensity" fmt="num" /> FLOP per byte, far below the ridge.
+</Check>
+
+<Check
+  id="i03-q3"
+  n={3}
+  input="number"
+  v="ch03.decode64.tps"
+  fmt="int"
+  q="Batch 64 sequences into each decode step. About how many tokens per second now, in all?"
+  href="#i-batch"
+  more="Batching"
+>
+  About <V v="ch03.decode64.tps" fmt="int" />: one read of the weights now makes
+  64 tokens, and each step takes only about twice as long. Still memory-bound,
+  because each sequence's cache must be read too.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- A step takes the longer of its arithmetic time and its memory time.
+- Intensity is FLOPs per byte; the ridge is peak FLOP rate over bandwidth.
+- Decode at batch 1 is far below the ridge: memory-bound, arithmetic idle.
+- Prefill is far above it; batching moves decode up the slope.
+
+<Keep>
+  Ridge on the simulator's H100: <V v="ch03.ridge" fmt="int" /> FLOP per byte.
+</Keep>
+
+</Remember>

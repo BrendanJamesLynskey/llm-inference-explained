@@ -12,6 +12,8 @@ Draft and verify, pass by pass: each verify pass keeps the accepted drafts and o
 
 <Layer kind="concept">
 
+<span id="i-why-spec" />
+
 Decode is memory-bound: a step spends its time reading the weights, and the
 arithmetic units mostly wait. So a step that checks **several** positions
 costs about the same as one that produces a single token. Speculative
@@ -29,12 +31,16 @@ decoding exploits that.
    $\gamma$ are accepted, the target's pass also gives one more token for
    free.
 
+<span id="i-exact-dist" />
+
 Each target pass therefore yields between 1 and $\gamma + 1$ tokens. And
 the rule is built so that the tokens come out with **exactly** the target
 model's distribution. Speculative decoding changes the speed, never the
 output distribution: the draft only decides how much of the target's work
 is reused. (Under greedy decoding this reduces to "keep the guesses that
 match the target's argmax".)
+
+<span id="i-cost" />
 
 What it costs: the draft's own steps, and some wasted target work on
 rejected guesses. It pays when the draft agrees with the target often
@@ -133,3 +139,66 @@ text, the models and the sampling temperature.
 - Inference Trade-offs Explained: [speculative decoding](https://inference-tradeoffs-explained.vercel.app/learn/10-speculative-decoding), where it helps and where it hurts, measured on five workloads
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i07-q1"
+  n={1}
+  input="number"
+  v="ch07.tokensPerPass"
+  tol={0.05}
+  q="Acceptance α = 0.8 and γ = 4 drafted tokens: how many tokens does each target pass yield on average?"
+  href="#i-exact-dist"
+  more="Tokens per pass"
+>
+  <V v="ch07.tokensPerPass" fmt="num" />: $(1 - \alpha^{\gamma+1})/(1 - \alpha)$,
+  between 1 and $\gamma + 1$.
+</Check>
+
+<Check
+  id="i07-q2"
+  n={2}
+  input="number"
+  v="ch07.speedup"
+  tol={0.05}
+  q="With a draft step costing c = 0.05 of a target step, what is the expected speed-up?"
+  href="#i-cost"
+  more="What it costs"
+>
+  <V v="ch07.speedup" fmt="num" /> times: the tokens per pass divided by $\gamma
+  c + 1$, the cost of four draft steps and one target pass.
+</Check>
+
+<Check
+  id="i07-q3"
+  n={3}
+  choices={[
+    "Slightly: the draft's mistakes leak through",
+    "Never: the tokens come out with exactly the target's distribution",
+    "Only under greedy decoding",
+  ]}
+  answer={1}
+  q="Does speculative decoding change what the model outputs?"
+  href="#i-exact-dist"
+  more="Tokens per pass"
+>
+  Never: accepting each draft with probability $\min(1, p/q)$ and redrawing from
+  the leftover distribution after a rejection reproduces the target's
+  distribution exactly. Only the speed changes.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- A memory-bound step checks several positions for about the cost of one.
+- A cheap draft guesses $\gamma$ tokens; one target pass verifies them all.
+- The accept rule keeps exactly the target's output distribution.
+- It pays when acceptance is high and the draft cheap, most at small batch.
+
+<Keep>
+  Speed-up $= (1 - \alpha^{\gamma+1}) / ((1 - \alpha)(\gamma c + 1))$.
+</Keep>
+
+</Remember>
