@@ -119,6 +119,20 @@ export default function AboutPage(): JSX.Element {
           </Link>
           .
         </p>
+
+        <h2>Terms across the sites</h2>
+        <p data-definitions-link>
+          A few terms (goodput, ρ, the pipeline bubble) mean different things on
+          different companion sites; the{" "}
+          <a
+            href="https://agent-harnesses-explained.vercel.app/definitions"
+            className={A}
+          >
+            shared definitions
+          </a>{" "}
+          give each one definition and one formula, and say where a site
+          differs.
+        </p>
       </div>
       <p
         className="mt-12 text-sm text-neutral-600 dark:text-neutral-400"
