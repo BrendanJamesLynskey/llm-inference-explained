@@ -9,6 +9,7 @@ import { SECTIONS } from "../../src/lib/mdx/sections";
 const PAGES = [
   "/",
   "/learn",
+  "/inference",
   "/about",
   ...SECTIONS.map((s) => `/learn/${s.slug}`),
 ];

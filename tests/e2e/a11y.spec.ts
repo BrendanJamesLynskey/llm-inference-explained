@@ -8,6 +8,7 @@ import { expect, test } from "@playwright/test";
 const PAGES = [
   "/",
   "/learn",
+  "/inference",
   "/about",
   "/learn/02-kv-cache",
   "/learn/03-roofline",

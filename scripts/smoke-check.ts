@@ -116,6 +116,10 @@ async function main(): Promise<void> {
     ]),
     await checkPage(base, "/learn", ["Inference, chapter by chapter"]),
     await checkPage(base, "/about", [...CREDIT, "Where the numbers come from"]),
+    await checkPage(base, "/inference", [
+      'data-testid="reading-order"',
+      "data-track-glossary",
+    ]),
   ];
   for (const s of SECTIONS) {
     results.push(
