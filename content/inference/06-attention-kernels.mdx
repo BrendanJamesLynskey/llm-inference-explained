@@ -13,6 +13,8 @@ FlashAttention's forward pass, tile by tile, on a small problem: the scores are 
 
 <Layer kind="concept">
 
+<span id="i-naive" />
+
 Written the obvious way, attention for one head over $N$ tokens is three
 steps, each a separate GPU kernel:
 
@@ -25,6 +27,8 @@ steps, each a separate GPU kernel:
 At 16 bits, the two $N\times N$ matrices for an 8,192-token sequence are
 128 MiB each, per head, per layer, written and read again. The arithmetic
 is cheap next to that traffic.
+
+<span id="i-flash" />
 
 **FlashAttention** never writes $S$ or $P$. It loads a tile of queries
 and a tile of keys and values into the chip's fast on-chip memory (SRAM:
@@ -45,6 +49,8 @@ better utilisation. FlashAttention-3
 adds FP8. FlashAttention-4, per the
 [project's README](https://github.com/Dao-AILab/flash-attention), is written
 for Hopper and Blackwell (B200). The tiling idea is the same.
+
+<span id="i-splitk" />
 
 **Decode has a different problem.** One new query per sequence, attending
 over a long cache. A kernel that parallelises over batch × heads has too
@@ -117,3 +123,67 @@ with the textbook result to $10^{-12}$.
 - GPU Kernels Explained: [Softmax and FlashAttention](https://gpu-kernels-explained.vercel.app/learn/09-softmax-and-flashattention), the online softmax and FlashAttention-2's tile loop animated, with its HBM traffic
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i06-q1"
+  n={1}
+  input="number"
+  v="ch06.scoresMiB8k"
+  tol={0}
+  q="One head, an 8,192-token sequence, 16 bits: how many MiB is the N × N score matrix?"
+  href="#i-naive"
+  more="Attention, written the obvious way"
+>
+  <V v="ch06.scoresMiB8k" fmt="int" /> MiB, and the softmax writes another of
+  the same size, per head, per layer, written and read again.
+</Check>
+
+<Check
+  id="i06-q2"
+  n={2}
+  input="number"
+  v="ch06.stdOverFlash"
+  tol={0.1}
+  q="The widget's default (4,096 tokens, d = 64, 192 KB of SRAM): how many times less HBM traffic does FlashAttention move?"
+  href="#i-flash"
+  more="FlashAttention"
+>
+  About <V v="ch06.stdOverFlash" fmt="num" /> times: it never writes the score
+  or probability matrices, only re-reads Q and O once per key block.
+</Check>
+
+<Check
+  id="i06-q3"
+  n={3}
+  choices={[
+    "Decode has too much arithmetic",
+    "One query per sequence leaves too little parallel work, so split-K also splits the keys",
+    "Decode cannot use an online softmax",
+  ]}
+  answer={1}
+  q="Why does decode need split-K (Flash-Decoding)?"
+  href="#i-splitk"
+  more="Decode's problem"
+>
+  At small batch, parallelising over batch × heads leaves the GPU idle while
+  each query walks thousands of keys. Splitting the keys gives every worker a
+  slice; partial results merge with the same rescaling rule, exactly.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Naive attention writes and re-reads two $N \times N$ matrices per head per layer.
+- FlashAttention tiles Q, K and V on chip and never writes them.
+- An online softmax (running maximum and sum, rescaled) makes it exact.
+- Decode has a different problem: too little parallel work; split-K splits the keys too.
+
+<Keep>
+  Rescale by $e^{m_{\text{old}} - m_{\text{new}}}$ when the maximum rises: the
+  one idea behind FlashAttention and split-K.
+</Keep>
+
+</Remember>

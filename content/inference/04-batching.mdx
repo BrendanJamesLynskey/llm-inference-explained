@@ -15,6 +15,8 @@ Batching is how a server turns a memory-bound decode step into many users'
 tokens. The question is _which_ requests share each step. Four answers, in
 the order the field found them:
 
+<span id="i-static" />
+
 **Static batching.** Collect a full batch, prefill it, decode until every
 member has finished, then take the next batch. Simple, and the way most
 offline jobs work. Two costs: early arrivals wait for the batch to fill,
@@ -25,11 +27,15 @@ until the batch's longest request finishes after 500.
 waiting request has waited a set time. It bounds the queueing delay at low
 load. It doesn't fix the padding.
 
+<span id="i-continuous" />
+
 **Continuous batching** (iteration-level scheduling, from Orca). Make the
 scheduling decision every step, not every batch. When a sequence finishes,
 its slot goes to a waiting request at the very next step. Slots never sit
 idle as padding, and new requests don't wait for a whole batch to drain.
 It is the basis of modern serving engines.
+
+<span id="i-chunked" />
 
 **Chunked prefill** (from Sarathi). Continuous batching still has to
 prefill each newcomer. If it runs that prefill as its own step, every
@@ -49,6 +55,8 @@ inter-token tail (ITL p99) when prompts are long.
 <BatchingWidget />
 
 <Layer kind="concept">
+
+<span id="i-notice" />
 
 What to notice:
 
@@ -136,3 +144,70 @@ for the shape of the trade-offs, not for capacity planning.
 - Inference Trade-offs Explained: [batching policy and chunked prefill](https://inference-tradeoffs-explained.vercel.app/learn/01-batching-and-chunked-prefill), measured as a trade-off on five workloads
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i04-q1"
+  n={1}
+  choices={[
+    "Its batches are larger",
+    "A finished sequence's slot goes to a waiting request at the very next step, so no slot idles as padding",
+    "It skips prefill",
+  ]}
+  answer={1}
+  q="Why does continuous batching beat static batching once lengths vary?"
+  href="#i-continuous"
+  more="Continuous batching"
+>
+  It schedules every step, not every batch: no slot is wasted on padding while
+  the batch's longest request finishes, and nobody waits for a batch to fill.
+</Check>
+
+<Check
+  id="i04-q2"
+  n={2}
+  choices={[
+    "Time to first token, always",
+    "The inter-token latency tail: prefill no longer stalls every running stream",
+    "Throughput, always",
+  ]}
+  answer={1}
+  q="What does chunked prefill reliably improve?"
+  href="#i-chunked"
+  more="Chunked prefill"
+>
+  The ITL tail: each step carries the decodes plus a slice of a prompt, so a
+  long prefill no longer freezes everyone else's stream. Its effect on time to
+  first token can go either way.
+</Check>
+
+<Check
+  id="i04-q3"
+  n={3}
+  choices={[
+    "Higher throughput, and each user's tokens come faster",
+    "Higher throughput, but each step is slower, so each user's tokens come more slowly",
+    "Lower throughput and lower latency",
+  ]}
+  answer={1}
+  q="Raise the maximum batch size. What is the trade?"
+  href="#i-notice"
+  more="What to notice"
+>
+  More sequences share each read of the weights, so tokens per second rise, but
+  every step takes longer. The SLOs decide where to stop.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Batching turns one memory-bound decode step into many users' tokens.
+- Static and dynamic batching waste slots on padding; continuous batching schedules every step.
+- Chunked prefill gives each step a token budget and smooths the inter-token tail.
+- A bigger batch trades each user's speed for total throughput.
+
+<Keep>Schedule per step, not per batch: that is continuous batching.</Keep>
+
+</Remember>

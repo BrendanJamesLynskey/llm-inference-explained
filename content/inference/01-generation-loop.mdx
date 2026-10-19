@@ -34,6 +34,8 @@ that job in a loop.
    matches a stop string the caller asked for, or when it hits a length
    limit.
 
+<span id="i-sequential" />
+
 Why can't step 4 be done in parallel, like prefill? Because token _t + 1_
 depends on token _t_, and token _t_ doesn't exist until the previous step
 has sampled it. Generation is **sequential by construction**. A 500-token
@@ -50,6 +52,8 @@ decode step takes in **one** token. The step log counts the arithmetic.
 <GenerationLoopWidget />
 
 <Layer kind="concept">
+
+<span id="i-two-phases" />
 
 Two things in that log matter for the rest of the site.
 
@@ -127,3 +131,71 @@ the explainer's vendored transformer. Chapter 2 explains what `cache` holds.
   Llama 3's vocabulary and shapes: [The Llama 3 Herd of Models](https://arxiv.org/abs/2407.21783) (arXiv:2407.21783)
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i01-q1"
+  n={1}
+  choices={[
+    "Because GPUs cannot run decode steps in parallel",
+    "Because token t + 1 depends on token t, which does not exist until the step before has sampled it",
+    "Because the KV cache would be too large",
+  ]}
+  answer={1}
+  q="Why can a prompt be processed in one pass, but not the answer?"
+  href="#i-sequential"
+  more="Sequential by construction"
+>
+  Generation is sequential by construction: every output token is an input to
+  the next step. A 500-token answer is 500 forward passes one after another,
+  however many GPUs you own.
+</Check>
+
+<Check
+  id="i01-q2"
+  n={2}
+  input="number"
+  v="ch01.prefillOverDecode"
+  tol={0.1}
+  q="Llama-3-8B on one H100: how many times longer does the 2,048-token prefill pass take than one decode pass?"
+  href="#i-two-phases"
+  more="Two workloads"
+>
+  About <V v="ch01.prefillOverDecode" fmt="num" /> times, by the simulator's
+  cost model. Not 2,048 times: prefill pushes the tokens through each weight
+  together, while a decode step pays a full read of the weights for one token.
+</Check>
+
+<Check
+  id="i01-q3"
+  n={3}
+  choices={[
+    "Time to first token is mostly decode",
+    "Time to first token is mostly prefill; time per output token is decode",
+    "Both are set by the tokeniser",
+  ]}
+  answer={1}
+  q="Users see the two phases as two latencies. Which is which?"
+  href="#i-two-phases"
+  more="Two workloads"
+>
+  The wait for the first token is mostly queueing and prefill; after it, each
+  token takes one decode step. Chapter 10 makes both precise.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Generation is a loop: prefill the prompt once, then one decode pass per output token.
+- Decoding is sequential by construction: token $t + 1$ needs token $t$.
+- Prefill and decode are different workloads: many tokens per weight read against one.
+- Decode steps reuse earlier tokens' keys and values: the KV cache.
+
+<Keep>
+  Time to first token ≈ queueing + prefill; time per output token ≈ one decode
+  step.
+</Keep>
+
+</Remember>

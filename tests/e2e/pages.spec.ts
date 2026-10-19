@@ -9,6 +9,7 @@ import { SECTIONS } from "../../src/lib/mdx/sections";
 const PAGES = [
   "/",
   "/learn",
+  "/inference",
   "/about",
   ...SECTIONS.map((s) => `/learn/${s.slug}`),
 ];
@@ -340,6 +341,6 @@ test("the about page ends with the author credit", async ({ page }) => {
   const link = credit.getByRole("link", { name: "Brendan Lynskey" });
   await expect(link).toHaveAttribute(
     "href",
-    "https://github.com/BrendanJamesLynskey",
+    "https://brendanjameslynskey.github.io/",
   );
 });

@@ -11,6 +11,8 @@ Tensor parallelism's ring all-reduce, chunk by chunk, priced by the serving simu
 
 <Layer kind="concept">
 
+<span id="i-why-split" />
+
 Llama-3-70B's weights alone are 141.10 GB in BF16: they don't fit on one
 80 GB GPU, before any KV cache. Even when a model fits, spreading it over
 several GPUs adds their memory bandwidth together, and decode is
@@ -25,6 +27,8 @@ $1/n$ of every layer and does $1/n$ of every multiply. The messages are
 small (one activation vector per token) but there are many of them, twice
 per layer, on the critical path of every step. TP wants the fastest link
 you have, which is why it normally stays inside one NVLink-connected server.
+
+<span id="i-pp" />
 
 **Pipeline parallelism (PP)** gives each device a contiguous slice of the
 layers. A token's activations pass from stage to stage: one message per
@@ -54,6 +58,8 @@ servers, and data parallelism (independent replicas) on top.
 <ParallelismWidget />
 
 <Layer kind="concept">
+
+<span id="i-costs" />
 
 With the simulator's link figures and this page's first-order model, a
 Llama-3-70B decode step at batch 16 on 4× H100 takes 14.47 ms of compute,
@@ -134,3 +140,69 @@ collectives with your communication library's own benchmarks.
 - New to training? [Training, chapter 11: data parallelism](https://transformer-training-explained.vercel.app/training/11-data-parallelism) and [chapter 12: model parallelism](https://transformer-training-explained.vercel.app/training/12-model-parallelism) (the Training site, in the Foundations track): the same tensor and pipeline parallelism as training uses them, plus data parallelism, ZeRO and the pipeline bubble
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i09-q1"
+  n={1}
+  input="number"
+  v="ch09.weights70b"
+  fmt="gb2"
+  q="Llama-3-70B's weights in BF16: how many GB?"
+  href="#i-why-split"
+  more="Why split a model"
+>
+  <V v="ch09.weights70b" fmt="gb2" />, more than one 80 GB GPU holds before any
+  KV cache; and spreading the model adds the GPUs' bandwidths together.
+</Check>
+
+<Check
+  id="i09-q2"
+  n={2}
+  input="slider"
+  min={0}
+  max={1}
+  step={0.01}
+  v="ch09.bubble4x4"
+  abs={0.03}
+  q="GPipe with 4 stages and 4 micro-batches in flight: what fraction of the step is bubble?"
+  href="#i-pp"
+  more="Pipeline parallelism"
+>
+  <V v="ch09.bubble4x4" fmt="num" />: $(n - 1)/(m + n - 1) = 3/7$. More
+  micro-batches shrink it.
+</Check>
+
+<Check
+  id="i09-q3"
+  n={3}
+  choices={[
+    "Bandwidth: the messages are large",
+    "Latency per message: decode's all-reduces are tiny but there are two per layer",
+    "Nothing: NVLink is free",
+  ]}
+  answer={1}
+  q="On NVLink, what dominates tensor parallelism's all-reduce cost in decode?"
+  href="#i-costs"
+  more="What the messages cost"
+>
+  The per-message latency: decode messages are one activation vector per token,
+  but every layer sends two, on the critical path. That is why TP stays inside a
+  fast NVLink domain.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Split a model when it does not fit, or to add bandwidth: decode is bandwidth-bound.
+- Tensor parallelism: two all-reduces per layer, latency-sensitive; keep it on NVLink.
+- Pipeline parallelism: one message per boundary, but a bubble unless micro-batches fill it.
+- Expert parallelism: all-to-alls that send tokens to their experts and back.
+
+<Keep>
+  Pipeline bubble $= (n - 1)/(m + n - 1)$ for $n$ stages and $m$ micro-batches.
+</Keep>
+
+</Remember>

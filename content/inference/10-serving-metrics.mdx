@@ -8,6 +8,8 @@ from).
 
 <Layer kind="concept">
 
+<span id="i-metrics" />
+
 A serving system is judged by what users feel and what operators pay for.
 The standard vocabulary:
 
@@ -29,11 +31,15 @@ The standard vocabulary:
   as the highest request rate at which a target fraction of requests meet
   their SLOs.
 
+<span id="i-p99" />
+
 **Why percentiles, and why p99.** Averages hide the tail, and the tail is
 what users remember. Means also move when a few requests are very slow.
 Report p50 for the typical experience and p90/p99 for the tail. Tails
 compound: if a page needs 100 independent requests and each is slow 1% of
 the time, 63% of page loads include at least one slow one.
+
+<span id="i-little" />
 
 **Little's law** ties the averages together: the average number of
 requests in the system, $L$, equals the arrival rate $\lambda$ times the
@@ -106,3 +112,71 @@ computed the same way.
   Little, [A Proof for the Queuing Formula: L = λW](https://doi.org/10.1287/opre.9.3.383), Operations Research, 1961
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i10-q1"
+  n={1}
+  input="slider"
+  min={0}
+  max={1}
+  step={0.01}
+  v="ch10.pageSlow"
+  abs={0.03}
+  q="A page needs 100 independent requests, each slow 1% of the time. What fraction of page loads include at least one slow request?"
+  href="#i-p99"
+  more="Why p99"
+>
+  <V v="ch10.pageSlow" fmt="num" />: $1 - 0.99^{100}$. Tails compound, which is
+  why serving reports p99 and not just the mean.
+</Check>
+
+<Check
+  id="i10-q2"
+  n={2}
+  choices={[
+    "Every token served per second",
+    "Requests per second that met both the TTFT and TPOT targets",
+    "Tokens per second per GPU",
+  ]}
+  answer={1}
+  q="What is goodput?"
+  href="#i-metrics"
+  more="The vocabulary"
+>
+  Throughput counts everything served; goodput counts only what was served well
+  enough, the requests that met both SLOs.
+</Check>
+
+<Check
+  id="i10-q3"
+  n={3}
+  choices={[
+    "TPOT, because it averages the gaps",
+    "ITL, because it keeps every gap",
+    "Throughput",
+  ]}
+  answer={1}
+  q="A single 200 ms stall in a stream of tokens: which metric shows it?"
+  href="#i-metrics"
+  more="The vocabulary"
+>
+  The inter-token latency tail: TPOT averages a request's gaps and hides the
+  stall; ITL keeps every gap.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- TTFT: arrival to first token. TPOT: the average gap after it. ITL: every gap.
+- Goodput: requests per second that met both SLOs.
+- Report p50 for the typical experience and p99 for the tail; tails compound.
+- Little's law, $L = \lambda W$, is a sanity check on any simulator or load test.
+
+<Keep>
+  $L = \lambda W$: requests in the system = arrival rate × time in the system.
+</Keep>
+
+</Remember>

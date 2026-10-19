@@ -7,11 +7,15 @@ bandwidth) and [the KV cache](/learn/02-kv-cache) (what it costs in bytes).
 
 <Layer kind="concept">
 
+<span id="i-why-quant" />
+
 If a decode step's time is mostly "read every weight, then read the cache",
 the most direct way to speed it up is to make those bytes fewer. That is
 what quantisation for inference is mostly about. Storing numbers in fewer
 bits also lets bigger models, longer contexts and larger batches fit in the
 same memory.
+
+<span id="i-three" />
 
 Three things can be quantised, and they behave differently:
 
@@ -40,6 +44,8 @@ all weights; at long context and large batch, the cache takes over.
 <QuantisationWidget />
 
 <Layer kind="concept">
+
+<span id="i-figures" />
 
 Some figures from the same cost model, Llama-3-8B on one H100:
 
@@ -132,3 +138,64 @@ documentation for which formats it accelerates.
 - New to training? [Training, chapter 9: mixed precision](https://transformer-training-explained.vercel.app/training/09-mixed-precision) (the Training site, in the Foundations track): the formats a model is trained in (BF16, FP16 with loss scaling, FP8) before it is quantised for serving
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i08-q1"
+  n={1}
+  input="number"
+  v="ch08.int4.tps"
+  fmt="int"
+  q="Llama-3-8B, batch 1, 2,048 context, one H100: about how many tokens per second with 4-bit weights?"
+  href="#i-figures"
+  more="Figures from the cost model"
+>
+  About <V v="ch08.int4.tps" fmt="int" />, against
+  <V v="ch08.bf16.tps" fmt="int" /> in BF16: the step is memory-bound, so time
+  tracks the bytes read.
+</Check>
+
+<Check
+  id="i08-q2"
+  n={2}
+  input="number"
+  v="ch08.int4Speedup"
+  tol={0.05}
+  q="So how many times faster is that step with 4-bit weights than in BF16?"
+  href="#i-figures"
+  more="Figures from the cost model"
+>
+  <V v="ch08.int4Speedup" fmt="num" /> times, not 4: the KV cache is still read
+  in BF16, and each step pays a fixed overhead.
+</Check>
+
+<Check
+  id="i08-q3"
+  n={3}
+  choices={[
+    "Weights only",
+    "The KV cache: it can outweigh the weights in bytes per step",
+    "Neither: quantisation only helps prefill",
+  ]}
+  answer={1}
+  q="At batch 32 with 8,192 tokens of context each, which quantisation helps most?"
+  href="#i-three"
+  more="What to quantise"
+>
+  The cache: there it is more than twice the weights per step, so an FP8 cache
+  cuts more bytes than 8-bit weights do.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- Decode is "read every weight, then read the cache": fewer bytes, faster steps.
+- Weight-only formats speed up memory-bound decode; W8A8 also raises the compute roof for prefill.
+- At long context and large batch the KV cache dominates; quantise it too.
+- Fewer bits always risk accuracy: measure it on your workload.
+
+<Keep>In a memory-bound step, time tracks bytes.</Keep>
+
+</Remember>

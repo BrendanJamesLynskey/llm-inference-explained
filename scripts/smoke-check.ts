@@ -24,7 +24,7 @@ import { SECTIONS } from "@/lib/mdx/sections";
 /** The author credit: the last line of the About page (brief 35). */
 const CREDIT = [
   'data-author-credit="true">Built by',
-  'href="https://github.com/BrendanJamesLynskey">Brendan Lynskey</a>',
+  'href="https://brendanjameslynskey.github.io/">Brendan Lynskey</a>',
 ];
 
 type Result = { path: string; ok: boolean; detail: string };
@@ -116,6 +116,10 @@ async function main(): Promise<void> {
     ]),
     await checkPage(base, "/learn", ["Inference, chapter by chapter"]),
     await checkPage(base, "/about", [...CREDIT, "Where the numbers come from"]),
+    await checkPage(base, "/inference", [
+      'data-testid="reading-order"',
+      "data-track-glossary",
+    ]),
   ];
   for (const s of SECTIONS) {
     results.push(
@@ -124,6 +128,7 @@ async function main(): Promise<void> {
         // client-only interactives (chapters 11, 13, 14) render a marked placeholder
         "data-testid=|data-pending-widget=",
         'data-callout="deeper"',
+        "data-self-check=",
       ]),
     );
   }

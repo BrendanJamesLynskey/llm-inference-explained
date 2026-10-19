@@ -8,6 +8,8 @@ of [chapter 10](/learn/10-serving-metrics).
 
 <Layer kind="concept">
 
+<span id="i-sim" />
+
 This chapter hands you the simulator. It is the JavaScript engine of
 [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim),
 a discrete-event simulator of prefill/decode-disaggregated serving, copied
@@ -35,6 +37,8 @@ What it models, per instance:
 - every step costs the roofline time of chapter 3, plus a power model
   (chapter 3's illustrative coefficients).
 
+<span id="i-ttft-link" />
+
 Because the first token leaves the prefill pool **before** the KV transfer,
 a slow or busy link never shows up in TTFT: look at the **hand-off p99**
 and at **TPOT**, which counts the wait for the cache.
@@ -57,6 +61,8 @@ SLOs. Every change reruns both clusters.
 <DisaggSimulatorWidget />
 
 <Layer kind="concept">
+
+<span id="i-try" />
 
 **Things to try.**
 
@@ -151,3 +157,73 @@ does not model layer-wise streaming, preemption or prefix caching.
   sections 4, 8, 10, 11 and 15
 
 </Callout>
+
+<CheckYourself>
+
+<Check
+  id="i13-q1"
+  n={1}
+  input="slider"
+  min={0}
+  max={100}
+  step={1}
+  v="ch13.disagg8.slo"
+  fmt="pct1"
+  abs={4}
+  q="Defaults at 8 req/s, one prefill instance: what share of requests meet both SLOs (the recorded run)?"
+  href="#i-try"
+  more="Things to try"
+>
+  Only <V v="ch13.disagg8.slo" fmt="pct1" />: one prefill instance cannot keep
+  up, prompts queue, and TTFT p99 reaches{" "}
+  <V v="ch13.disagg8.ttft99" fmt="ms0" />. A second prefill instance recovers
+  it.
+</Check>
+
+<Check
+  id="i13-q2"
+  n={2}
+  choices={[
+    "Because the link is never busy",
+    "Because the first token leaves the prefill pool before the KV transfer starts",
+    "Because TTFT excludes queueing",
+  ]}
+  answer={1}
+  q="Why does a slow KV link never show up in TTFT here?"
+  href="#i-ttft-link"
+  more="Where the link shows"
+>
+  The prefill pool emits the first token, then the cache travels. Look at the
+  hand-off p99 and TPOT instead.
+</Check>
+
+<Check
+  id="i13-q3"
+  n={3}
+  choices={[
+    "Roughly the same",
+    "Bit for bit on twelve of thirteen configurations, and the thirteenth within 2.2e-16",
+    "Within a few per cent",
+  ]}
+  answer={1}
+  q="How closely does this browser copy of the simulator match its Python original?"
+  href="#i-sim"
+  more="The simulator"
+>
+  Request by request: every timestamp and energy counter, identical on twelve
+  configurations; the power-capped one differs only in the last bit of a cube
+  root.
+</Check>
+
+</CheckYourself>
+
+<Remember>
+
+- The browser runs the same discrete-event simulator as the Python package, checked request by request.
+- Prefill pool, KV link queue and decode pool are separate queues; the colocated baseline shares GPUs.
+- A slow link shows in hand-off latency and TPOT, never in TTFT.
+- Presets reproduce recorded results; then every change re-runs both clusters.
+
+<Keep>Find the hot-spot: the prefill pool, the link or the decode pool.</Keep>
+
+</Remember>
