@@ -27,6 +27,12 @@ const CREDIT = [
   'href="https://brendanjameslynskey.github.io/">Brendan Lynskey</a>',
 ];
 
+/** The shared definitions link on /about and in the start page's glossary (brief 44D). */
+const DEFINITIONS = [
+  "data-definitions-link",
+  'href="https://agent-harnesses-explained.vercel.app/definitions"',
+];
+
 type Result = { path: string; ok: boolean; detail: string };
 
 const headers: Record<string, string> = process.env.VERCEL_BYPASS
@@ -115,10 +121,15 @@ async function main(): Promise<void> {
       ...SWITCH,
     ]),
     await checkPage(base, "/learn", ["Inference, chapter by chapter"]),
-    await checkPage(base, "/about", [...CREDIT, "Where the numbers come from"]),
+    await checkPage(base, "/about", [
+      ...CREDIT,
+      ...DEFINITIONS,
+      "Where the numbers come from",
+    ]),
     await checkPage(base, "/inference", [
       'data-testid="reading-order"',
       "data-track-glossary",
+      ...DEFINITIONS,
     ]),
   ];
   for (const s of SECTIONS) {
