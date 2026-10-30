@@ -168,30 +168,14 @@ export function DisaggSimulatorWidget(): JSX.Element {
           onChange={(v) => set("link", v)}
         />
         <Segmented
-          label="Hand-off compression"
-          value={
-            c.compression === "none"
-              ? "none"
-              : `${c.compression}|${c.compressAt}`
-          }
+          label="Hand-off compression (on the prefill GPU)"
+          value={c.compression}
           options={[
             { value: "none", label: "none" },
-            { value: "fp8|transit", label: "fp8 in transit" },
-            { value: "fp8|endpoint", label: "fp8 at the GPU" },
-            { value: "fp4-block|endpoint", label: "fp4 at the GPU" },
+            { value: "fp8", label: "fp8" },
+            { value: "fp4-block", label: "fp4" },
           ]}
-          onChange={(v) => {
-            const [comp, at] = v.split("|") as [
-              Controls["compression"],
-              Controls["compressAt"]?,
-            ];
-            setC((old) => ({
-              ...old,
-              compression: comp,
-              compressAt: at ?? "transit",
-            }));
-            setPresetId("");
-          }}
+          onChange={(v) => set("compression", v)}
         />
         <Slider
           label="TTFT SLO"

@@ -1,6 +1,6 @@
 {
  "simulator": "https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim",
- "commit": "38c655e39302d159e09c65f00e8aaaa741bdd238",
+ "commit": "ac1846a44df93ea18145b6031867a78ba15aa7c9",
  "rows": [
   {
    "id": "sweep-2",
@@ -1039,7 +1039,7 @@
    "id": "hetero-2ah",
    "section": "10",
    "rate": 8,
-   "line": "| 2x A100 prefill + H100 decode | 1,093.5 ms | 8.9 ms | 7.46 | 96.9% | 0.412 | 793 W | $1,035 | 1,859 |",
+   "line": "| 2x A100 prefill + H100 decode | 1,079.7 ms | 8.8 ms | 7.58 | 98.5% | 0.412 | 794 W | $1,035 | 1,861 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1058,18 +1058,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 1.0934896494664301,
-     "tpot_p99": 0.008866545714100551,
-     "itl_p50": 0.007742171223881655,
-     "itl_p99": 0.008979053182088137,
-     "itl_max": 0.03606086033796174,
-     "slo": 0.9694444444444444,
-     "goodput": 7.459399341153649,
-     "avg_w": 793.0433697816865,
-     "j_tok": 0.4120163300437511,
-     "kv_share": 0.0027142646859293997,
-     "link_util": 0.040248227083224904,
-     "handoff_p99": 0.018904281900808676,
+     "ttft_p99": 1.0797162173213701,
+     "tpot_p99": 0.008815176554676193,
+     "itl_p50": 0.007732187988061412,
+     "itl_p99": 0.009062694113438852,
+     "itl_max": 0.04034539577198615,
+     "slo": 0.9847222222222223,
+     "goodput": 7.576954345097331,
+     "avg_w": 793.6068921993586,
+     "j_tok": 0.4118395990096953,
+     "kv_share": 0.0027739381831486253,
+     "link_util": 0.040294110581758844,
+     "handoff_p99": 0.019628358886393468,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -1078,133 +1078,7 @@
      "run": "run",
      "key": "ttft_p99",
      "fmt": "ms2",
-     "text": "1,093.5 ms"
-    },
-    {
-     "run": "run",
-     "key": "tpot_p99",
-     "fmt": "ms",
-     "text": "8.9 ms"
-    },
-    {
-     "run": "run",
-     "key": "slo",
-     "fmt": "pct",
-     "text": "96.9%"
-    },
-    {
-     "run": "run",
-     "key": "j_tok",
-     "fmt": "f3",
-     "text": "0.412"
-    }
-   ]
-  },
-  {
-   "id": "t11-colocated",
-   "section": "11",
-   "rate": 8,
-   "line": "| Colocated x2, H100 | 287.6 ms | 12.2 ms | 7.69 | 100.0% | 0.367 | 711 W | 0.0% | 2.72 | 2,856 |",
-   "runs": {
-    "run": {
-     "model": "llama3-8b",
-     "device": "h100",
-     "devicesPerInstance": 1,
-     "mode": "colocated",
-     "nPrefill": 1,
-     "nDecode": 1,
-     "nColocated": 2,
-     "link": "ib-ndr",
-     "ttftSlo": 1.0,
-     "tpotSlo": 0.025
-    }
-   },
-   "python": {
-    "run": {
-     "ttft_p99": 0.2876175257335736,
-     "tpot_p99": 0.012193672568015434,
-     "itl_p50": 0.007094416334325615,
-     "itl_p99": 0.0820915036929555,
-     "itl_max": 0.5204093716582037,
-     "slo": 1.0,
-     "goodput": 7.694509349041013,
-     "avg_w": 711.1695420121628,
-     "j_tok": 0.36719705682713294,
-     "kv_share": 0.0,
-     "link_util": 0.0,
-     "handoff_p99": 0.0,
-     "hotspot": "prefill -> colocated-0"
-    }
-   },
-   "cells": [
-    {
-     "run": "run",
-     "key": "ttft_p99",
-     "fmt": "ms2",
-     "text": "287.6 ms"
-    },
-    {
-     "run": "run",
-     "key": "tpot_p99",
-     "fmt": "ms",
-     "text": "12.2 ms"
-    },
-    {
-     "run": "run",
-     "key": "slo",
-     "fmt": "pct",
-     "text": "100.0%"
-    },
-    {
-     "run": "run",
-     "key": "j_tok",
-     "fmt": "f3",
-     "text": "0.367"
-    }
-   ]
-  },
-  {
-   "id": "t11-1p1d",
-   "section": "11",
-   "rate": 8,
-   "line": "| 1P1D H100 | 353.6 ms | 8.8 ms | 7.69 | 100.0% | 0.326 | 629 W | 0.0% | 3.07 | 2,850 |",
-   "runs": {
-    "run": {
-     "model": "llama3-8b",
-     "device": "h100",
-     "devicesPerInstance": 1,
-     "mode": "disagg",
-     "nPrefill": 1,
-     "nDecode": 1,
-     "nColocated": 2,
-     "link": "ib-ndr",
-     "ttftSlo": 1.0,
-     "tpotSlo": 0.025
-    }
-   },
-   "python": {
-    "run": {
-     "ttft_p99": 0.3536255769527793,
-     "tpot_p99": 0.008836510168191468,
-     "itl_p50": 0.007733221158208181,
-     "itl_p99": 0.009085191546262195,
-     "itl_max": 0.037204731512048284,
-     "slo": 1.0,
-     "goodput": 7.694509349041013,
-     "avg_w": 629.3763112340155,
-     "j_tok": 0.3256000575459429,
-     "kv_share": 0.002912080104164246,
-     "link_util": 0.04041942818124964,
-     "handoff_p99": 0.019075652889591656,
-     "hotspot": "prefill -> prefill-0"
-    }
-   },
-   "cells": [
-    {
-     "run": "run",
-     "key": "ttft_p99",
-     "fmt": "ms2",
-     "text": "353.6 ms"
+     "text": "1,079.7 ms"
     },
     {
      "run": "run",
@@ -1216,147 +1090,13 @@
      "run": "run",
      "key": "slo",
      "fmt": "pct",
-     "text": "100.0%"
+     "text": "98.5%"
     },
     {
      "run": "run",
      "key": "j_tok",
      "fmt": "f3",
-     "text": "0.326"
-    }
-   ]
-  },
-  {
-   "id": "circ-gpu",
-   "section": "11",
-   "rate": 8,
-   "line": "| 1P1D H100 | 5.4 ms | 13.5 ms | 7.69 | 100.0% | 0.185 | 357 W | 0.0% | 5.41 | 2,846 |",
-   "runs": {
-    "run": {
-     "model": "llama3-8b-hyena-circ",
-     "device": "h100",
-     "devicesPerInstance": 1,
-     "mode": "disagg",
-     "nPrefill": 1,
-     "nDecode": 1,
-     "nColocated": 2,
-     "link": "ib-ndr",
-     "ttftSlo": 1.0,
-     "tpotSlo": 0.025,
-     "lmHead": "last"
-    }
-   },
-   "python": {
-    "run": {
-     "ttft_p99": 0.005416614801191527,
-     "tpot_p99": 0.013543621181830279,
-     "itl_p50": 0.006345459677611132,
-     "itl_p99": 0.014496221516424157,
-     "itl_max": 0.13069307085021364,
-     "slo": 1.0,
-     "goodput": 7.694509349041013,
-     "avg_w": 356.9279487472792,
-     "j_tok": 0.18489251133640747,
-     "kv_share": 0.013758484705357395,
-     "link_util": 0.16124297836850285,
-     "handoff_p99": 0.07474631068159847,
-     "hotspot": "kv_transfer -> kv-link"
-    }
-   },
-   "cells": [
-    {
-     "run": "run",
-     "key": "ttft_p99",
-     "fmt": "ms2",
-     "text": "5.4 ms"
-    },
-    {
-     "run": "run",
-     "key": "tpot_p99",
-     "fmt": "ms",
-     "text": "13.5 ms"
-    },
-    {
-     "run": "run",
-     "key": "slo",
-     "fmt": "pct",
-     "text": "100.0%"
-    },
-    {
-     "run": "run",
-     "key": "j_tok",
-     "fmt": "f3",
-     "text": "0.185"
-    }
-   ]
-  },
-  {
-   "id": "circ-optical",
-   "section": "11",
-   "rate": 8,
-   "line": "| optical-fft prefill (optimistic) + H100 decode | 90.5 ms | 13.5 ms | 7.69 | 100.0% | 0.194 | 375 W | 100.0% | 5.15 | 2,772 |",
-   "runs": {
-    "run": {
-     "model": "llama3-8b-hyena-circ",
-     "device": "h100",
-     "devicesPerInstance": 1,
-     "mode": "disagg",
-     "nPrefill": 1,
-     "nDecode": 1,
-     "nColocated": 2,
-     "link": "ib-ndr",
-     "ttftSlo": 1.0,
-     "tpotSlo": 0.025,
-     "lmHead": "last",
-     "prefillDevice": "optical-fft",
-     "engine": {
-      "enob": 11,
-      "maskRate": 20000.0,
-      "overlap": true
-     }
-    }
-   },
-   "python": {
-    "run": {
-     "ttft_p99": 0.09053701440771084,
-     "tpot_p99": 0.013481985713976624,
-     "itl_p50": 0.006327070471641605,
-     "itl_p99": 0.014475876011943,
-     "itl_max": 0.10164899444940545,
-     "slo": 1.0,
-     "goodput": 7.694509349041013,
-     "avg_w": 374.5694705497094,
-     "j_tok": 0.19408803975864122,
-     "kv_share": 0.01335795703524468,
-     "link_util": 0.16119559889345245,
-     "handoff_p99": 0.06953341562495467,
-     "hotspot": "prefill -> prefill-0"
-    }
-   },
-   "cells": [
-    {
-     "run": "run",
-     "key": "ttft_p99",
-     "fmt": "ms2",
-     "text": "90.5 ms"
-    },
-    {
-     "run": "run",
-     "key": "tpot_p99",
-     "fmt": "ms",
-     "text": "13.5 ms"
-    },
-    {
-     "run": "run",
-     "key": "slo",
-     "fmt": "pct",
-     "text": "100.0%"
-    },
-    {
-     "run": "run",
-     "key": "j_tok",
-     "fmt": "f3",
-     "text": "0.194"
+     "text": "0.412"
     }
    ]
   },
@@ -1709,7 +1449,7 @@
    "id": "ib-fp8",
    "section": "15",
    "rate": 8,
-   "line": "| ib-ndr | fp8 | 9.6 ms | 9.6 ms | 8.8 ms | 8.8 ms | 100.0% | 100.0% | 0.326 | 0.326 | 0.0% |",
+   "line": "| ib-ndr | fp8 | 9.6 ms | 8.8 ms | 100.0% | 0.326 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1727,18 +1467,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 0.3536255769527793,
-     "tpot_p99": 0.008826875760645983,
-     "itl_p50": 0.007733025528352755,
-     "itl_p99": 0.009086952214929056,
-     "itl_max": 0.026367792589553574,
+     "ttft_p99": 0.35453892235123086,
+     "tpot_p99": 0.008825450032921733,
+     "itl_p50": 0.007733077492538598,
+     "itl_p99": 0.009086126656955861,
+     "itl_max": 0.02568432787520436,
      "slo": 1.0,
      "goodput": 7.694509349041013,
-     "avg_w": 629.2779298912934,
-     "j_tok": 0.3255442210213129,
-     "kv_share": 0.0014614265868345803,
-     "link_util": 0.020255010295966252,
-     "handoff_p99": 0.009555826444800084,
+     "avg_w": 629.4439923111532,
+     "j_tok": 0.32563040375135394,
+     "kv_share": 0.0014606200121141377,
+     "link_util": 0.02024749502428057,
+     "handoff_p99": 0.009552826444807589,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -1767,7 +1507,7 @@
    "id": "eth25-8-none",
    "section": "15",
    "rate": 8,
-   "line": "| 8 req/s | none | 64.4% | 471.9 ms | 471.9 ms | 11.6 ms | 11.6 ms | 100.0% | 100.0% | 0.326 | 0.326 | 0.0% |",
+   "line": "| 8 req/s | none | 64.4% | 471.9 ms | 11.6 ms | 100.0% | 0.326 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1830,7 +1570,7 @@
    "id": "eth25-8-fp8",
    "section": "15",
    "rate": 8,
-   "line": "| 8 req/s | fp8 | 32.3% | 157.0 ms | 157.0 ms | 9.5 ms | 9.5 ms | 100.0% | 100.0% | 0.326 | 0.326 | 0.0% |",
+   "line": "| 8 req/s | fp8 | 32.3% | 157.0 ms | 9.5 ms | 100.0% | 0.326 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1848,18 +1588,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 0.3536255769527793,
-     "tpot_p99": 0.00954803584137241,
-     "itl_p50": 0.0077400223522374745,
-     "itl_p99": 0.009090131199997131,
-     "itl_max": 0.1942469793113446,
+     "ttft_p99": 0.35453892235123086,
+     "tpot_p99": 0.009543516527783744,
+     "itl_p50": 0.00773977475820864,
+     "itl_p99": 0.0090900333850783,
+     "itl_max": 0.1932176020934122,
      "slo": 1.0,
      "goodput": 7.694509349041013,
-     "avg_w": 629.003196942304,
-     "j_tok": 0.32568090674341627,
-     "kv_share": 0.0258572708193321,
-     "link_util": 0.322641487523472,
-     "handoff_p99": 0.15702373265248007,
+     "avg_w": 629.1691174280614,
+     "j_tok": 0.32576708947345756,
+     "kv_share": 0.02584795557587363,
+     "link_util": 0.3226337247468868,
+     "handoff_p99": 0.1569530201727994,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -1894,7 +1634,7 @@
    "id": "eth25-10-none",
    "section": "15",
    "rate": 10,
-   "line": "| 10 req/s | none | 79.0% | 750.0 ms | 750.0 ms | 14.1 ms | 14.1 ms | 100.0% | 100.0% | 0.293 | 0.293 | 0.0% |",
+   "line": "| 10 req/s | none | 79.0% | 750.0 ms | 14.1 ms | 100.0% | 0.293 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1957,7 +1697,7 @@
    "id": "eth25-10-fp8",
    "section": "15",
    "rate": 10,
-   "line": "| 10 req/s | fp8 | 39.7% | 160.5 ms | 159.1 ms | 10.1 ms | 10.1 ms | 100.0% | 100.0% | 0.292 | 0.292 | 0.0% |",
+   "line": "| 10 req/s | fp8 | 39.7% | 159.1 ms | 10.1 ms | 100.0% | 0.292 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -1975,18 +1715,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 0.41085142314725187,
-     "tpot_p99": 0.010100576641479952,
+     "ttft_p99": 0.41207161347752025,
+     "tpot_p99": 0.01009318622523555,
      "itl_p50": 0.008251704453726916,
      "itl_p99": 0.009826552262680366,
-     "itl_max": 0.18998866140797332,
+     "itl_max": 0.19675143272736761,
      "slo": 1.0,
      "goodput": 9.618136686301238,
-     "avg_w": 693.3598231754535,
-     "j_tok": 0.29171880959030655,
-     "kv_share": 0.026459699203023122,
-     "link_util": 0.39705795105252145,
-     "handoff_p99": 0.16050248047063026,
+     "avg_w": 693.5431888310975,
+     "j_tok": 0.2917962589917482,
+     "kv_share": 0.026424988654192506,
+     "link_util": 0.39704832090493797,
+     "handoff_p99": 0.15913817219788257,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -2001,7 +1741,7 @@
      "run": "run",
      "key": "handoff_p99",
      "fmt": "ms2",
-     "text": "160.5 ms"
+     "text": "159.1 ms"
     },
     {
      "run": "run",
@@ -2021,7 +1761,7 @@
    "id": "eth25-12-none",
    "section": "15",
    "rate": 12,
-   "line": "| 12 req/s | none | 90.6% | 2,959.0 ms | 2,959.0 ms | 26.5 ms | 26.5 ms | 98.3% | 98.3% | 0.273 | 0.273 | 0.0% |",
+   "line": "| 12 req/s | none | 90.6% | 2,959.0 ms | 26.5 ms | 98.3% | 0.273 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -2084,7 +1824,7 @@
    "id": "eth25-12-fp8",
    "section": "15",
    "rate": 12,
-   "line": "| 12 req/s | fp8 | 46.9% | 163.7 ms | 163.7 ms | 10.6 ms | 10.7 ms | 100.0% | 100.0% | 0.269 | 0.269 | 0.0% |",
+   "line": "| 12 req/s | fp8 | 46.9% | 163.7 ms | 10.7 ms | 100.0% | 0.269 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -2102,18 +1842,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 0.500334858421052,
-     "tpot_p99": 0.010618047932902016,
-     "itl_p50": 0.008845071188058995,
-     "itl_p99": 0.010528976525378653,
-     "itl_max": 0.19323422195428464,
+     "ttft_p99": 0.5028937660308592,
+     "tpot_p99": 0.01066145663567569,
+     "itl_p50": 0.00884257079403028,
+     "itl_p99": 0.010531959880594854,
+     "itl_max": 0.19213959912448786,
      "slo": 1.0,
      "goodput": 11.541764023561491,
-     "avg_w": 754.9308611939842,
-     "j_tok": 0.26902250667939537,
-     "kv_share": 0.027627302019930623,
-     "link_util": 0.4687898732174144,
-     "handoff_p99": 0.16374639913600025,
+     "avg_w": 755.1595319755922,
+     "j_tok": 0.26910432274513757,
+     "kv_share": 0.027654355569320374,
+     "link_util": 0.4687784157773071,
+     "handoff_p99": 0.16374141913599877,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -2134,7 +1874,7 @@
      "run": "run",
      "key": "tpot_p99",
      "fmt": "ms",
-     "text": "10.6 ms"
+     "text": "10.7 ms"
     },
     {
      "run": "run",
@@ -2148,7 +1888,7 @@
    "id": "eth25-14-none",
    "section": "15",
    "rate": 14,
-   "line": "| 14 req/s | none | 94.0% | 9,657.8 ms | 9,657.8 ms | 77.2 ms | 77.2 ms | 41.0% | 41.0% | 0.268 | 0.268 | 0.0% |",
+   "line": "| 14 req/s | none | 94.0% | 9,657.8 ms | 77.2 ms | 41.0% | 0.268 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -2211,7 +1951,7 @@
    "id": "eth25-14-fp8",
    "section": "15",
    "rate": 14,
-   "line": "| 14 req/s | fp8 | 53.7% | 166.6 ms | 166.6 ms | 11.5 ms | 11.6 ms | 100.0% | 100.0% | 0.253 | 0.253 | 0.0% |",
+   "line": "| 14 req/s | fp8 | 53.7% | 166.6 ms | 11.6 ms | 100.0% | 0.253 |",
    "runs": {
     "run": {
      "model": "llama3-8b",
@@ -2229,18 +1969,18 @@
    },
    "python": {
     "run": {
-     "ttft_p99": 0.6266001783231071,
-     "tpot_p99": 0.011528352606089014,
-     "itl_p50": 0.009483298292536801,
-     "itl_p99": 0.011093301397018251,
-     "itl_max": 0.1919701029038947,
+     "ttft_p99": 0.6317597268537247,
+     "tpot_p99": 0.011569791607158646,
+     "itl_p50": 0.009483273838807094,
+     "itl_p99": 0.011113503235819167,
+     "itl_max": 0.190449633626379,
      "slo": 1.0,
      "goodput": 13.46539136082173,
-     "avg_w": 812.507377813712,
-     "j_tok": 0.252881189219038,
-     "kv_share": 0.028134083068732475,
-     "link_util": 0.5367480125794762,
-     "handoff_p99": 0.16662258699839966,
+     "avg_w": 812.7831474530732,
+     "j_tok": 0.2529673719490792,
+     "kv_share": 0.02810500707238035,
+     "link_util": 0.5367347992716031,
+     "handoff_p99": 0.16661957699839927,
      "hotspot": "prefill -> prefill-0"
     }
    },
@@ -2261,7 +2001,7 @@
      "run": "run",
      "key": "tpot_p99",
      "fmt": "ms",
-     "text": "11.5 ms"
+     "text": "11.6 ms"
     },
     {
      "run": "run",
@@ -2274,9 +2014,9 @@
  ],
  "quotes": {
   "capacity": "* Prefill 7.49 req/s, decode 28.8, KV link 74.5: bottleneck prefill (before: prefill 7.49, decode 28.6, link 74.5).",
-  "2p1d": "* 2P1D, rates 2, 4, 6, 8, 10 req/s: SLO met 100.0%, 100.0%, 100.0%, 100.0%, 100.0%; TPOT p99 14.5 ms, 15.2 ms, 15.8 ms, 16.4 ms, 17.0 ms.",
+  "2p1d": "* 2P1D, rates 2, 4, 6, 8, 10 req/s: SLO met 100.0%, 100.0%, 100.0%, 100.0%, 100.0%; TPOT p99 14.5 ms, 15.1 ms, 15.8 ms, 16.4 ms, 17.0 ms.",
   "proportionality-0.5": "| 0.5 req/s | 1,472 W | 11.8 | 54% | 11.83 \u2192 11.81 |",
-  "handoff-bytes": "Photonic interconnect is *not* Fourier optics: `cpo-optical` is an illustrative co-packaged-optics link (round numbers; optical I/O chiplets reach multi-Tb/s, Wade et al., IEEE Micro 2020). Hand-off for a 2,048-token prompt: GQA KV cache 268.4 MB; Hyena direct cache 1,073.7 MB; Hyena distilled state 16.8 MB. All-H100 pools.",
+  "handoff-bytes": "`cpo-optical` is an illustrative co-packaged-optics switch link (round numbers; optical I/O chiplets reach multi-Tb/s, Wade et al., IEEE Micro 2020). Hand-off for a 2,048-token prompt: 268.4 MB of GQA KV cache. All-H100 pools.",
   "eth25-saturation": "**Load sweep: GQA KV over 25 GbE** (the link saturates near 11.6 req/s uncompressed: 268.4 MB per 2,048-token prompt at 3.125 GB/s). Same workload otherwise."
  }
 }

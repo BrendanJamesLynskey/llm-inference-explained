@@ -12,9 +12,9 @@ import { FORMATS, run, type Metrics } from "@/lib/disagg/engine";
 import { results, workload } from "./helpers";
 
 describe("live engine reproduces examples/results.md", () => {
-  it("covers sections 3, 4, 10, 11, 14 and 15", () => {
+  it("covers sections 3, 4, 10, 14 and 15", () => {
     expect(new Set(results.rows.map((r) => r.section))).toEqual(
-      new Set(["3", "4", "10", "11", "14", "15"]),
+      new Set(["3", "4", "10", "14", "15"]),
     );
   });
 

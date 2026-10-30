@@ -13,21 +13,11 @@ import type { WorkloadRate } from "./workloads";
 export const SIM_MODELS = {
   "llama3-70b": { label: "Llama-3-70B", devices: 4 },
   "llama3-8b": { label: "Llama-3-8B", devices: 1 },
-  /** FOptInf's speculative FFT-mixing variant, last-token LM head. */
-  "llama3-8b-hyena-circ": {
-    label: "Hyena-2 + circulant (speculative)",
-    devices: 1,
-  },
 } as const;
 export type SimModel = keyof typeof SIM_MODELS;
 
-/** Prefill devices: two GPUs and the illustrative optical transform engine. */
-export const PREFILL_DEVICES = {
-  h100: "H100",
-  a100: "A100",
-  "optical-default": "Optical FFT (defaults)",
-  "optical-optimistic": "Optical FFT (optimistic)",
-} as const;
+/** Prefill devices: the two GPUs of results.md §10's heterogeneous pools. */
+export const PREFILL_DEVICES = { h100: "H100", a100: "A100" } as const;
 export type PrefillDevice = keyof typeof PREFILL_DEVICES;
 export const DECODE_DEVICES = { h100: "H100", a100: "A100" } as const;
 export type DecodeDevice = keyof typeof DECODE_DEVICES;
@@ -48,8 +38,8 @@ export type Controls = {
   nPrefill: number;
   nDecode: number;
   link: SimLink;
+  /** KV hand-off compression, done on the prefill GPU before the hand-off is sent. */
   compression: "none" | "fp8" | "fp4-block";
-  compressAt: "transit" | "endpoint";
   rate: WorkloadRate;
   /** Seconds. */
   ttftSlo: number;
@@ -65,14 +55,10 @@ export const DEFAULT_CONTROLS: Controls = {
   nDecode: 1,
   link: "ib-ndr",
   compression: "none",
-  compressAt: "transit",
   rate: 4,
   ttftSlo: 1.0,
   tpotSlo: 0.025,
 };
-
-/** The optical engine settings of results.md §11 ("optimistic"). */
-const OPTIMISTIC = { enob: 11, maskRate: 20000.0, overlap: true };
 
 /** The colocated pool's GPU: the shared one if both pools use it, else H100. */
 export function colocatedDevice(c: Controls): DecodeDevice {
@@ -94,17 +80,12 @@ export function configs(c: Controls): {
     link: c.link,
     ttftSlo: c.ttftSlo,
     tpotSlo: c.tpotSlo,
-    ...(c.model === "llama3-8b-hyena-circ" ? { lmHead: "last" as const } : {}),
   };
-  const optical = c.prefillDevice.startsWith("optical");
   const disagg: SimConfig = {
     ...base,
-    prefillDevice: optical ? "optical-fft" : c.prefillDevice,
+    prefillDevice: c.prefillDevice,
     decodeDevice: c.decodeDevice,
-    ...(c.prefillDevice === "optical-optimistic" ? { engine: OPTIMISTIC } : {}),
-    ...(c.compression !== "none"
-      ? { kvCompress: c.compression, kvCompressAt: c.compressAt }
-      : {}),
+    ...(c.compression !== "none" ? { kvCompress: c.compression } : {}),
   };
   const colocated: SimConfig = {
     ...base,
@@ -189,37 +170,20 @@ export const PRESETS: Preset[] = [
     id: "hetero-2ah",
     label: "2× A100 prefill + H100 decode (§10)",
     section: "10",
-    line: "| 2x A100 prefill + H100 decode | 1,093.5 ms | 8.9 ms | 7.46 | 96.9% | 0.412 | 793 W | $1,035 | 1,859 |",
+    line: "| 2x A100 prefill + H100 decode | 1,079.7 ms | 8.8 ms | 7.58 | 98.5% | 0.412 | 794 W | $1,035 | 1,861 |",
     controls: { ...L8, prefillDevice: "a100", nPrefill: 2 },
     expected: [
-      { column: "disagg", key: "ttft_p99", fmt: "ms2", text: "1,093.5 ms" },
-      { column: "disagg", key: "tpot_p99", fmt: "ms", text: "8.9 ms" },
-      { column: "disagg", key: "slo", fmt: "pct", text: "96.9%" },
+      { column: "disagg", key: "ttft_p99", fmt: "ms2", text: "1,079.7 ms" },
+      { column: "disagg", key: "tpot_p99", fmt: "ms", text: "8.8 ms" },
+      { column: "disagg", key: "slo", fmt: "pct", text: "98.5%" },
       { column: "disagg", key: "j_tok", fmt: "f3", text: "0.412" },
-    ],
-  },
-  {
-    id: "circ-optical",
-    label: "Optical prefill pool, circulant model (§11)",
-    section: "11",
-    line: "| optical-fft prefill (optimistic) + H100 decode | 90.5 ms | 13.5 ms | 7.69 | 100.0% | 0.194 | 375 W | 100.0% | 5.15 | 2,772 |",
-    controls: {
-      ...L8,
-      model: "llama3-8b-hyena-circ",
-      prefillDevice: "optical-optimistic",
-    },
-    expected: [
-      { column: "disagg", key: "ttft_p99", fmt: "ms2", text: "90.5 ms" },
-      { column: "disagg", key: "tpot_p99", fmt: "ms", text: "13.5 ms" },
-      { column: "disagg", key: "slo", fmt: "pct", text: "100.0%" },
-      { column: "disagg", key: "j_tok", fmt: "f3", text: "0.194" },
     ],
   },
   {
     id: "eth25-14-none",
     label: "25 GbE link at 14 req/s (§15)",
     section: "15",
-    line: "| 14 req/s | none | 94.0% | 9,657.8 ms | 9,657.8 ms | 77.2 ms | 77.2 ms | 41.0% | 41.0% | 0.268 | 0.268 | 0.0% |",
+    line: "| 14 req/s | none | 94.0% | 9,657.8 ms | 77.2 ms | 41.0% | 0.268 |",
     controls: { ...L8, link: "eth-25g", rate: 14 },
     expected: [
       { column: "disagg", key: "link_util", fmt: "pct", text: "94.0%" },
@@ -230,14 +194,14 @@ export const PRESETS: Preset[] = [
   },
   {
     id: "eth25-14-fp8",
-    label: "… with fp8 hand-off compression (§15)",
+    label: "… with fp8 compression on the prefill GPU (§15)",
     section: "15",
-    line: "| 14 req/s | fp8 | 53.7% | 166.6 ms | 166.6 ms | 11.5 ms | 11.6 ms | 100.0% | 100.0% | 0.253 | 0.253 | 0.0% |",
+    line: "| 14 req/s | fp8 | 53.7% | 166.6 ms | 11.6 ms | 100.0% | 0.253 |",
     controls: { ...L8, link: "eth-25g", rate: 14, compression: "fp8" },
     expected: [
       { column: "disagg", key: "link_util", fmt: "pct", text: "53.7%" },
       { column: "disagg", key: "handoff_p99", fmt: "ms2", text: "166.6 ms" },
-      { column: "disagg", key: "tpot_p99", fmt: "ms", text: "11.5 ms" },
+      { column: "disagg", key: "tpot_p99", fmt: "ms", text: "11.6 ms" },
       { column: "disagg", key: "slo", fmt: "pct", text: "100.0%" },
     ],
   },

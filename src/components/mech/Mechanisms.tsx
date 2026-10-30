@@ -85,8 +85,8 @@ export function HandoffMechanism(): JSX.Element {
         <>
           One prefill and one decode H100 (Llama-3-8B), fourteen requests at ten
           per second with long prompts. Watch the KV link lane: on a slow link
-          the hand-offs queue, and decode waits for them. Compress the cache in
-          transit, or on the GPU before it leaves.
+          the hand-offs queue, and decode waits for them. Compress the cache on
+          the prefill GPU before it leaves.
         </>
       }
       equation={<HandoffEq />}

@@ -72,25 +72,6 @@ describe("controls → configurations", () => {
     expect(c.colocated.mode).toBe("colocated");
     expect(c.colocated.kvCompress).toBeUndefined();
     expect(c.disagg.kvCompress).toBe("fp8");
-    expect(c.disagg.kvCompressAt).toBe("transit");
-  });
-
-  it("optical prefill maps to the optical-fft device; colocated stays on GPUs", () => {
-    const base = {
-      ...DEFAULT_CONTROLS,
-      model: "llama3-8b-hyena-circ" as const,
-    };
-    const d = configs({ ...base, prefillDevice: "optical-default" });
-    expect(d.disagg.prefillDevice).toBe("optical-fft");
-    expect(d.disagg.engine).toBeUndefined();
-    expect(d.disagg.lmHead).toBe("last");
-    expect(d.colocated.device).toBe("h100");
-    const o = configs({ ...base, prefillDevice: "optical-optimistic" });
-    expect(o.disagg.engine).toEqual({
-      enob: 11,
-      maskRate: 20000,
-      overlap: true,
-    });
   });
 
   it("the colocated pool shares the GPU when both pools use it", () => {

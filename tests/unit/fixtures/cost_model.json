@@ -1,5 +1,5 @@
 {
- "simulator_commit": "38c655e39302d159e09c65f00e8aaaa741bdd238",
+ "simulator_commit": "ac1846a44df93ea18145b6031867a78ba15aa7c9",
  "kv_bytes_per_token": {
   "llama3-8b": 131072.0,
   "llama3-70b": 327680.0
@@ -28,6 +28,11 @@
    "bandwidth": 64000000000.0,
    "latency": 5e-06
   },
+  "pcie4": {
+   "name": "PCIe Gen4 x16",
+   "bandwidth": 32000000000.0,
+   "latency": 5e-06
+  },
   "eth-100g": {
    "name": "100 GbE",
    "bandwidth": 12500000000.0,
@@ -39,8 +44,18 @@
    "latency": 2e-05
   },
   "cpo-optical": {
-   "name": "Co-packaged optics (illustrative)",
+   "name": "Co-packaged optics switch (illustrative)",
    "bandwidth": 200000000000.0,
+   "latency": 5e-06
+  },
+  "nvlink3": {
+   "name": "NVLink 3 (one direction)",
+   "bandwidth": 300000000000.0,
+   "latency": 5e-06
+  },
+  "nvlink5": {
+   "name": "NVLink 5 (one direction)",
+   "bandwidth": 900000000000.0,
    "latency": 5e-06
   }
  },
