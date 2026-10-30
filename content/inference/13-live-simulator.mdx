@@ -14,12 +14,12 @@ This chapter hands you the simulator. It is the JavaScript engine of
 [Disaggregated_Inference_Sim](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim),
 a discrete-event simulator of prefill/decode-disaggregated serving, copied
 byte for byte from a pinned commit. Its Python original is the source of
-every number in the InfSim and FOptInf decks; this copy is tested against
-it **request by request**: for thirteen configurations, every request's
+every number in the InfSim decks; this copy is tested against
+it **request by request**: for eleven configurations, every request's
 six timestamps (prefill start, first token, link granted, KV landed,
 decode start, finish) and every instance's energy counters must be
-identical to Python's, and twelve of the thirteen are, bit for bit. The
-thirteenth throttles steps under a hard power cap, which solves a cubic
+identical to Python's, and ten of the eleven are, bit for bit. The
+eleventh throttles steps under a hard power cap, which solves a cubic
 with cube roots that can differ in the last bit between maths libraries;
 it agrees to within 2.2e-16, relatively (the test allows 1e-9, as the
 simulator's own tests do).
@@ -73,17 +73,13 @@ SLOs. Every change reruns both clusters.
   recover.
 - _25 GbE at 14 req/s._ The hot-spot moves to the KV link (94.0% busy).
   TTFT is unaffected; hand-off p99 and TPOT are not. Then switch on FP8
-  compression in transit, or at the GPU.
+  or FP4 compression on the prefill GPU.
 - _H100 prefill + A100 decode._ TPOT p99 roughly doubles but stays inside
   the SLO, and energy per token falls.
-- _An optical prefill pool._ The FOptInf series asked whether a
-  Fourier-optical transform engine could serve as a prefill pool. For
-  attention models it has no work to do. For the most transform-heavy
-  (and speculative) model, a Hyena-2 variant with block-circulant weights
-  and a last-token output head, the optimistic engine gives a TTFT p99 of
-  90.5 ms against 5.4 ms for a plain H100 prefill pool, at 0.194 J per
-  token against 0.185. Every coefficient of the engine is illustrative;
-  the series' verdict is that it does not pay.
+- _A100 prefill + H100 decode._ The reverse placement: one A100 prefill
+  instance cannot keep up with 8 req/s of Llama-3-8B, and TTFT p99 grows
+  to 47.1 s. Add a second A100 prefill instance (the preset) and it comes
+  back to 1,079.7 ms, with 98.5% of requests meeting both SLOs.
 
 </Layer>
 
@@ -113,11 +109,9 @@ its KV cache landing on the decode pool, the link queue included.
 // src/lib/disagg/simulator.ts (excerpt): one set of controls, two clusters
 const disagg: SimConfig = {
   ...base,
-  prefillDevice: optical ? "optical-fft" : c.prefillDevice,
+  prefillDevice: c.prefillDevice,
   decodeDevice: c.decodeDevice,
-  ...(c.compression !== "none"
-    ? { kvCompress: c.compression, kvCompressAt: c.compressAt }
-    : {}),
+  ...(c.compression !== "none" ? { kvCompress: c.compression } : {}),
 };
 const colocated: SimConfig = {
   ...base,
@@ -134,11 +128,11 @@ browser tests, against what this widget displays.
 
 <Callout kind="illustrative">
 
-The optical transform engine (passes, mask rewrite rate, converter energy,
-static laser power), the block-circulant model, the co-packaged-optics
-link and the power coefficients are illustrative. The simulator treats a
-tensor-parallel group as one larger device with no all-reduce cost and
-does not model layer-wise streaming, preemption or prefix caching.
+The co-packaged-optics switch link, the compression presets' costs and the
+power coefficients are illustrative. This widget treats a tensor-parallel
+group as one larger device with no all-reduce cost and leaves the
+simulator's preemption and prefix-caching levers off; the simulator does
+not model layer-wise streaming.
 
 </Callout>
 
@@ -147,14 +141,11 @@ does not model layer-wise streaming, preemption or prefix caching.
 - InfSim 05 · [The Simulator: Model and Assumptions](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-05),
   [Six Experiments to Try](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-07)
   and [Limitations and Extensions](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-10)
-- FOptInf 03 · [Optical Prefill Against All-GPU Baselines](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-05)
-  and [What This Does Not Show](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-15)
 - Glossary: [Discrete-event simulation](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-des),
-  [Hot-spot attribution](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-hotspot),
-  [Break-even point](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-breakeven)
-- The engine: [web/sim_engine.js at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/web/sim_engine.js);
-  the numbers: [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
-  sections 4, 8, 10, 11 and 15
+  [Hot-spot attribution](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-hotspot)
+- The engine: [web/sim_engine.js at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/ac1846a44df93ea18145b6031867a78ba15aa7c9/web/sim_engine.js);
+  the numbers: [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/ac1846a44df93ea18145b6031867a78ba15aa7c9/examples/results.md),
+  sections 4, 8, 10 and 15
 
 </Callout>
 
@@ -202,7 +193,7 @@ does not model layer-wise streaming, preemption or prefix caching.
   n={3}
   choices={[
     "Roughly the same",
-    "Bit for bit on twelve of thirteen configurations, and the thirteenth within 2.2e-16",
+    "Bit for bit on ten of eleven configurations, and the eleventh within 2.2e-16",
     "Within a few per cent",
   ]}
   answer={1}

@@ -42,11 +42,8 @@ export type SimConfig = {
   decodeDevice?: string;
   prefillDevicesPerInstance?: number;
   decodeDevicesPerInstance?: number;
-  lmHead?: "all" | "last";
-  fftEff?: number;
-  engine?: { enob?: number; maskRate?: number; overlap?: boolean };
+  /** KV hand-off compression preset (none | fp8 | fp4-block), run on the prefill GPU. */
   kvCompress?: string;
-  kvCompressAt?: "transit" | "endpoint";
 };
 
 export type SimRequest = {
@@ -69,7 +66,6 @@ export type SimInstance = {
   busy: number;
   ec: number;
   em: number;
-  oj: number;
   peakW: number;
 };
 
@@ -78,8 +74,9 @@ export type SimResult = {
   insts: SimInstance[];
   link: {
     energy: number;
-    transitJ: number;
     bytes: number;
+    /** Hand-off bytes before compression. */
+    handoff: number;
     busy: number;
     wait: number;
   };

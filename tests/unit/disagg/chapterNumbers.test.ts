@@ -108,7 +108,7 @@ describe("chapter 12: moving the KV cache", () => {
       link: "ib-ndr",
     });
     const mb = (b: number) => `${(b / 1e6).toFixed(1)} MB`;
-    fromLine(quotes["handoff-bytes"]!, `GQA KV cache ${mb(h8.bytes)}`);
+    fromLine(quotes["handoff-bytes"]!, `${mb(h8.bytes)} of GQA KV cache`);
     quoted(
       "12-moving-the-kv-cache",
       "128 KiB per token",
@@ -119,13 +119,14 @@ describe("chapter 12: moving the KV cache", () => {
     );
     const table: [string, string, string][] = [
       ["nvlink4", "NVLink 4", "450 GB/s"],
-      ["cpo-optical", "Co-packaged optics (illustrative)", "200 GB/s"],
+      ["cpo-optical", "Co-packaged optics switch (illustrative)", "200 GB/s"],
       ["ib-ndr", "InfiniBand NDR 400G", "50 GB/s"],
       ["eth-100g", "100 GbE", "12.5 GB/s"],
       ["eth-25g", "25 GbE", "3.125 GB/s"],
     ];
     for (const [link, name, bw] of table) {
       expect(`${engine.LINKS[link]!.bw / 1e9} GB/s`).toBe(bw);
+      if (link === "cpo-optical") expect(engine.LINKS[link]!.name).toBe(name);
       quoted(
         "12-moving-the-kv-cache",
         `| ${name} | ${bw} | ${ms1(handoff({ ...base, link }).transferTime)} |`,
@@ -203,20 +204,20 @@ describe("chapter 12: moving the KV cache", () => {
 });
 
 describe("chapter 13: the live simulator", () => {
-  it("presets, the analytic bound and the optical pool (results.md §4, §8, §11, §15)", () => {
+  it("presets, the analytic bound and the reverse placement (results.md §4, §8, §10, §15)", () => {
     quoted(
       "13-live-simulator",
       `about ${fromLine(quotes.capacity!, "7.49")} req/s`,
       `TTFT p99 jumps to ${cell("sweep-8", "ttft_p99", "disagg")} and only ${cell("sweep-8", "slo", "disagg")}`,
       `KV link (${cell("eth25-14-none", "link_util")} busy)`,
-      `TTFT p99 of ${cell("circ-optical", "ttft_p99")} against ${cell("circ-gpu", "ttft_p99")}`,
-      `at ${cell("circ-optical", "j_tok")} J per token against ${cell("circ-gpu", "j_tok")}`,
+      `TTFT p99 grows to ${cell("hetero-ah", "ttft_p99")}`,
+      `back to ${cell("hetero-2ah", "ttft_p99")}, with ${cell("hetero-2ah", "slo")} of requests`,
       "up to 8,192 prompt tokens",
       "up to 256 sequences",
     );
   });
 
-  it("the parity claim: twelve of thirteen identical, the thirteenth within 2.2e-16", () => {
+  it("the parity claim: ten of eleven identical, the eleventh within 2.2e-16", () => {
     type Case = {
       name: string;
       cfg: Parameters<typeof engine.simulate>[0];
@@ -249,13 +250,13 @@ describe("chapter 13: the live simulator", () => {
       );
       if (same) identical++;
     }
-    expect(cases).toHaveLength(13);
-    expect(identical).toBe(12);
+    expect(cases).toHaveLength(11);
+    expect(identical).toBe(10);
     expect(worst).toBeLessThanOrEqual(2.2e-16);
     quoted(
       "13-live-simulator",
-      "for thirteen configurations",
-      "twelve of the thirteen are, bit for bit",
+      "for eleven configurations",
+      "ten of the eleven are, bit for bit",
       "within 2.2e-16",
     );
   });
@@ -282,8 +283,15 @@ describe("chapter 14: trade-offs", () => {
       "14-tradeoffs",
       "(59.0 ms for 2,048 tokens)",
       "100.0% of requests at every load from 2 to 14 req/s; so does 1P1D",
-      `TPOT p99 improves from ${cell("t11-colocated", "tpot_p99")} to ${cell("t11-1p1d", "tpot_p99")}`,
-      `TTFT p99 worsens from ${cell("t11-colocated", "ttft_p99")} to ${cell("t11-1p1d", "ttft_p99")}`,
+    );
+    // at 8 req/s: 1P1D is results.md §10's all-H100 row; colocated is the engine
+    const x = m("llama3-8b", "ib-ndr", 8);
+    expect(FORMATS.ms(x.d.tpot_p99)).toBe(cell("hetero-hh", "tpot_p99"));
+    expect(FORMATS.ms2(x.d.ttft_p99)).toBe(cell("hetero-hh", "ttft_p99"));
+    quoted(
+      "14-tradeoffs",
+      `TPOT p99 improves from ${FORMATS.ms(x.c.tpot_p99)} to ${cell("hetero-hh", "tpot_p99")}`,
+      `TTFT p99 worsens from ${FORMATS.ms2(x.c.ttft_p99)} to ${cell("hetero-hh", "ttft_p99")}`,
     );
   });
 

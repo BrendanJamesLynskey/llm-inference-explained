@@ -1,7 +1,10 @@
 /**
  * The files copied from Inference Trade-offs Explained (brief 41) are byte
- * for byte the ones its commit recorded in src/lib/tradeoffs/VENDORED.json,
- * and the scenarios were recorded at the simulator commit it names.
+ * for byte the ones recorded in src/lib/tradeoffs/VENDORED.json, and the
+ * scenarios were recorded at the simulator commit it names. The engine is
+ * the one exception: it is the simulator's engine at `engine.commit`, the
+ * same file the live simulator vendors (src/lib/disagg/vendor/), on which
+ * every recorded scenario reproduces bit for bit (mech.test.ts).
  */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -14,6 +17,7 @@ import { readJson } from "./helpers";
 const V = readJson<{
   commit: string;
   simulator: { commit: string };
+  engine: { commit: string };
   files: { path: string; sha256: string }[];
 }>("src/lib/tradeoffs/VENDORED.json");
 
@@ -22,6 +26,16 @@ describe("vendored from Inference Trade-offs Explained", () => {
     expect(V.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(V.simulator.commit).toMatch(/^[0-9a-f]{40}$/);
     expect(V.files.length).toBeGreaterThan(20);
+  });
+  it("runs the live simulator's engine, at the same commit", () => {
+    const disagg = readJson<{ commit: string; sha256: string }>(
+      "src/lib/disagg/vendor/VENDORED.json",
+    );
+    expect(V.engine.commit).toBe(disagg.commit);
+    const engine = V.files.find(
+      (f) => f.path === "src/lib/tradeoffs/vendor/sim_engine.js",
+    )!;
+    expect(engine.sha256).toBe(disagg.sha256);
   });
   for (const f of V.files)
     it(f.path, () => {

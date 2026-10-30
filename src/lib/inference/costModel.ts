@@ -342,11 +342,22 @@ export const LINKS: Record<string, Link> = {
   },
   "ib-ndr": { name: "InfiniBand NDR 400G", bandwidth: 50 * GB, latency: 10e-6 },
   pcie5: { name: "PCIe Gen5 x16", bandwidth: 64 * GB, latency: 5e-6 },
+  pcie4: { name: "PCIe Gen4 x16", bandwidth: 32 * GB, latency: 5e-6 },
   "eth-100g": { name: "100 GbE", bandwidth: 12.5 * GB, latency: 20e-6 },
   "eth-25g": { name: "25 GbE", bandwidth: 3.125 * GB, latency: 20e-6 },
   "cpo-optical": {
-    name: "Co-packaged optics (illustrative)",
+    name: "Co-packaged optics switch (illustrative)",
     bandwidth: 200 * GB,
+    latency: 5e-6,
+  },
+  nvlink3: {
+    name: "NVLink 3 (one direction)",
+    bandwidth: 300 * GB,
+    latency: 5e-6,
+  },
+  nvlink5: {
+    name: "NVLink 5 (one direction)",
+    bandwidth: 900 * GB,
     latency: 5e-6,
   },
 };

@@ -8,7 +8,7 @@
  * by an ulp between libms (Python's `x ** (1/3)` vs V8's Math.pow), so that
  * configuration is compared to 1e-9 relative, as the simulator's own tests
  * do. (Measured at the pinned commit: 105 of its 1,200 timestamps differ, by
- * at most 2.2e-16 relative; the other twelve configurations are identical.)
+ * at most 2.2e-16 relative; the other ten configurations are identical.)
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -44,10 +44,10 @@ function close(a: number | null, b: number | null, tol: number): boolean {
 const CUBE_ROOT = new Set(["70B colocated, cap 300 W"]);
 
 describe("vendored engine = Python package, request by request", () => {
-  it("covers thirteen configurations, all but one compared bit for bit", () => {
-    expect(fixture.cases).toHaveLength(13);
+  it("covers eleven configurations, all but one compared bit for bit", () => {
+    expect(fixture.cases).toHaveLength(11);
     expect(fixture.cases.filter((c) => !CUBE_ROOT.has(c.name))).toHaveLength(
-      12,
+      10,
     );
   });
 
@@ -73,7 +73,7 @@ describe("vendored engine = Python package, request by request", () => {
         );
       });
       r.insts.forEach((inst, i) => {
-        const js = [inst.ec, inst.em, inst.oj, inst.busy, inst.peakW];
+        const js = [inst.ec, inst.em, inst.busy, inst.peakW];
         js.forEach((x, k) =>
           expect(
             close(c.inst[i]![k]!, x, tol),
@@ -82,7 +82,7 @@ describe("vendored engine = Python package, request by request", () => {
         );
       });
       const l = r.link;
-      [l.energy, l.transitJ, l.bytes, l.busy, l.wait].forEach((x, k) =>
+      [l.energy, l.bytes, l.handoff, l.busy, l.wait].forEach((x, k) =>
         expect(close(c.link[k]!, x, tol), `${c.name} link ${k}`).toBe(true),
       );
       // percentiles of identical inputs are identical; J/token sums energies

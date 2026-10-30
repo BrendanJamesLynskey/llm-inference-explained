@@ -1,10 +1,15 @@
 {
-  "note": "Copied byte for byte from Inference Trade-offs Explained (brief 41): its mechanism animations, their library, the simulator engine it vendors and the scenarios the simulator recorded. tests/unit/mech/vendor.test.ts checks every hash.",
+  "note": "Copied byte for byte from Inference Trade-offs Explained (brief 41): its mechanism animations, their library and the scenarios the simulator recorded, with two exceptions (2026-10-30, when the simulator was cut back to serving): vendor/sim_engine.js is the simulator's engine at `engine.commit`, the same file as src/lib/disagg/vendor/sim_engine.js, and handoff.json no longer has the variant that compressed to FP8 on the link, an option the simulator dropped (removed from the file; the other variants are unchanged). Every remaining recorded scenario reproduces bit for bit on that engine. tests/unit/mech/vendor.test.ts checks every hash.",
   "repository": "https://github.com/BrendanJamesLynskey/inference-tradeoffs-explained",
   "commit": "239d29b92bd359d3907f5b5c481dfc627c257ada",
   "simulator": {
     "repository": "https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim",
     "commit": "69ffd2b8886c03f164bdb07dea954d1452169a06",
+    "path": "web/sim_engine.js"
+  },
+  "engine": {
+    "repository": "https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim",
+    "commit": "ac1846a44df93ea18145b6031867a78ba15aa7c9",
     "path": "web/sim_engine.js"
   },
   "files": [
@@ -74,7 +79,7 @@
     },
     {
       "path": "src/lib/tradeoffs/vendor/sim_engine.js",
-      "sha256": "c7c1d2bdb0b19df050c0a0c79feec7b183703d3622da5fb3b97c1fa8708e0478"
+      "sha256": "ae2fda43ce9253e7df9b30236fbc9ab442be692ca42897a4352e7bb275e62115"
     },
     {
       "path": "src/components/ui/Controls.tsx",
@@ -98,7 +103,7 @@
     },
     {
       "path": "public/tradeoffs/mechanisms/handoff.json",
-      "sha256": "54cd1f67f05f167baf7f5189de4a5e31265081c701ec40b95523be59519cfec1"
+      "sha256": "037b2186c156defdc95780405ac8993a467922bbf9b463d7c34ac611dc0cfb67"
     },
     {
       "path": "public/tradeoffs/mechanisms/speculative.json",

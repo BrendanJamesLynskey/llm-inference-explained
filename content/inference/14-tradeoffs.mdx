@@ -24,7 +24,8 @@ delayed by a short prefill. On two colocated H100s it meets both SLOs for
 disaggregation changes is the balance between the two latencies: at
 8 req/s TPOT p99 improves from 12.2 ms to 8.8 ms, while TTFT p99 worsens
 from 287.6 ms to 353.6 ms, because one prefill instance now serves every
-prompt (results.md §11). If the colocated cluster already meets its SLOs,
+prompt (1P1D from results.md §10; colocated from the live simulator on the
+same requests). If the colocated cluster already meets its SLOs,
 disaggregation buys margin on one SLO by spending it on the other.
 
 **High load and the wrong ratio.** One Llama-3-70B prefill instance can
@@ -108,9 +109,6 @@ series.
 - The [LLM Inference Simulators](https://github.com/BrendanJamesLynskey/LLM_Hub_Inference_Simulators)
   series (eleven decks) builds the simulator used here, from the
   discrete-event kernel to power, hot-spots, validation and acceleration.
-- The [Fourier Optics for Inference](https://github.com/BrendanJamesLynskey/LLM_Hub_Fourier_Optics_Inference)
-  series asks whether optical hardware could serve as a prefill pool or
-  carry the hand-off, and mostly finds that it cannot.
 - The [Simulation Engineering Toolkit](https://brendanjameslynskey.github.io/SimEng_Hub_Toolkit/)
   covers the engineering around simulators, including
   [PPA trade-offs](https://brendanjameslynskey.github.io/SimEng_13_PPA_Tradeoffs/)
@@ -167,15 +165,13 @@ coefficients are illustrative.
 <Callout kind="deeper">
 
 - InfSim 05 · [Results from the Python CLI](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-08)
-  and [What to Take Away](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-11);
-  FOptInf 03 · [The Break-Even Point](https://brendanjameslynskey.github.io/FOptInf_03_Optical_Prefill_Pools/#slide-09)
+  and [What to Take Away](https://brendanjameslynskey.github.io/InfSim_05_Disaggregated_Inference/#slide-11)
 - Glossary: [Disaggregated (prefill/decode) serving](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-disagg),
-  [Chunked prefill](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-chunked),
-  [Compute in transit](https://brendanjameslynskey.github.io/LLM_Hub_Fourier_Optics_Inference/#g-computetransit)
+  [Chunked prefill](https://brendanjameslynskey.github.io/LLM_Hub_Inference_Simulators/#g-chunked)
 - Zhong et al., [DistServe](https://arxiv.org/abs/2401.09670) (arXiv:2401.09670);
   Agrawal et al., [Sarathi-Serve](https://arxiv.org/abs/2403.02310) (arXiv:2403.02310)
-- The numbers: [results.md at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md),
-  sections 4, 6, 8 and 11
+- The numbers: [results.md at the vendored commit](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/ac1846a44df93ea18145b6031867a78ba15aa7c9/examples/results.md),
+  sections 4, 6, 8 and 10
 
 </Callout>
 

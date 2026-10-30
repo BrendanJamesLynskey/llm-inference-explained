@@ -106,8 +106,12 @@ reduced motion). GIFs (WebM alongside) in [`docs/media/`](docs/media/):
   all-reduce and a GPipe schedule, colocated against split pools, the KV
   hand-off), vendored byte for byte from its commit `239d29b` with the
   scenarios the simulator recorded (at its commit `69ffd2b`) and their tests
-  (`tests/unit/mech/`). `src/lib/tradeoffs/VENDORED.json` lists every file
-  and its SHA-256; `tests/unit/mech/vendor.test.ts` checks them.
+  (`tests/unit/mech/`), with two exceptions: the engine they run is the live
+  simulator's (below, `ac1846a`), on which every recorded scenario
+  reproduces bit for bit, and the hand-off scenario no longer has the
+  variant that compressed on the link, an option the simulator dropped.
+  `src/lib/tradeoffs/VENDORED.json` lists every file and its SHA-256;
+  `tests/unit/mech/vendor.test.ts` checks them.
 - **The tiny model** runs, by default, the trained weights of the Decoder
   site (Training's default run on _Alice's Adventures in Wonderland_;
   `public/data/trained-weights.json`, from transformer-explainer's
@@ -149,14 +153,14 @@ Regenerate them with `pnpm build && pnpm start` in one shell and
   own JavaScript engine, `web/sim_engine.js`, vendored byte for byte into
   `src/lib/disagg/vendor/` by `pnpm vendor:sim <commit>`, which records the
   commit and the file's SHA-256 in `VENDORED.json`. It is pinned at
-  [`38c655e`](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/tree/38c655e39302d159e09c65f00e8aaaa741bdd238).
+  [`ac1846a`](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/tree/ac1846a44df93ea18145b6031867a78ba15aa7c9).
   `scripts/disagg_reference.py` runs the Python package at the same commit
-  and writes three things: engine-parity fixtures (13 configurations; every
+  and writes three things: engine-parity fixtures (11 configurations; every
   request's six timestamps, every instance's energy counters and the link's
-  must match, bit for bit for 12 of them and to 1e-9 for the one whose power
-  cap takes cube roots, the documented tolerance); the 31 rows of the
+  must match, bit for bit for 10 of them and to 1e-9 for the one whose power
+  cap takes cube roots, the documented tolerance); the 27 rows of the
   simulator's
-  [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/38c655e39302d159e09c65f00e8aaaa741bdd238/examples/results.md)
+  [results.md](https://github.com/BrendanJamesLynskey/Disaggregated_Inference_Sim/blob/ac1846a44df93ea18145b6031867a78ba15aa7c9/examples/results.md)
   that the chapters quote, each checked against the recorded line; and the
   recorded workloads in `public/disagg/workloads/` that the browser runs on
   (Python's generator, recorded: a JavaScript port matches every length but
@@ -171,8 +175,8 @@ Regenerate them with `pnpm build && pnpm start` in one shell and
   derating factors and step overhead, the simplified batching scheduler, the
   paging allocator, the first-order communication model, the toy
   speculative-decoding distributions, the simulator's power coefficients,
-  the co-packaged-optics link and the optical transform engine (whose
-  block-circulant model is speculative), and layer-wise KV streaming (this
+  the co-packaged-optics switch link, the KV compression presets' costs,
+  and layer-wise KV streaming (this
   site's closed form; the simulator sends the cache after the prefill).
 - Papers are cited by arXiv ID, each checked against arXiv. Claims about
   serving engines (vLLM, SGLang, TensorRT-LLM, Dynamo) are hedged and linked
@@ -307,7 +311,8 @@ scripts/                    smoke-check, capture-screenshots, verify-maths,
   `src/lib/tradeoffs/`, the animation frame in `src/components/anim/`, the
   palette and `Controls.tsx` are from
   [inference-tradeoffs-explained](https://github.com/BrendanJamesLynskey/inference-tradeoffs-explained)
-  at `239d29b`, byte for byte (`src/lib/tradeoffs/VENDORED.json`).
+  at `239d29b`, byte for byte except the engine and one recorded variant
+  (`src/lib/tradeoffs/VENDORED.json`).
 - The trained toy weights are transformer-explainer's (Training's default
   run), at `984e647`.
 - The cost model is ported from, and the simulator engine in

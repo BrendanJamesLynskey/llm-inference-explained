@@ -4,12 +4,12 @@ The live simulator in chapters 11-14 runs the simulator's own JavaScript port
 (`src/lib/disagg/vendor/sim_engine.js`, vendored by `pnpm vendor:sim`). This
 script runs the Python package at the same commit and writes three things:
 
-* `tests/unit/fixtures/disagg_parity.json`: engine parity. Thirteen
+* `tests/unit/fixtures/disagg_parity.json`: engine parity. Eleven
   configurations (colocated and disaggregated, heterogeneous pools, power caps
-  and DVFS, KV compression in transit and at the GPU, FFT-mixing models on the
-  optical transform engine), each with its workload and every request's six
-  timestamps, every instance's energy counters and the link's counters, as the
-  simulator's own JS-parity tests compare them.
+  and DVFS, KV hand-off compression on the prefill GPU, the five links), each
+  with its workload and every request's six timestamps, every instance's
+  energy counters and the link's counters, as the simulator's own JS-parity
+  tests compare them.
 * `tests/unit/fixtures/disagg_results.json`: the results.md rows the chapters
   quote. Each entry holds the configuration, the Python summary and the
   matching line of `examples/results.md`; this script checks that every value,
@@ -40,7 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SIM = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT.parent / "Disaggregated_Inference_Sim"
 sys.path.insert(0, str(SIM / "src"))
 
-from disagg_sim.hardware import ACCELERATORS, KV_PRESETS, LINKS, MODELS, KVTransit  # noqa: E402
+from disagg_sim.hardware import ACCELERATORS, KV_PRESETS, LINKS, MODELS  # noqa: E402
 from disagg_sim.metrics import percentile, summarise  # noqa: E402
 from disagg_sim.sim import SimConfig, simulate  # noqa: E402
 from disagg_sim.workload import LengthDist, poisson_workload  # noqa: E402
@@ -57,28 +57,13 @@ def git(*args: str) -> str:
 
 def py_config(c: dict) -> SimConfig:
     """The Python SimConfig a JS config means (the JS port's keys are camelCase).
-    The same mapping as the simulator's tests/test_optical.py `py_config`, plus link
+    The same mapping as the simulator's tests/test_levers_2.py `py_config`, plus link
     channels and per-pool power caps."""
     def dev(key):
-        if key is None:
-            return None
-        d = ACCELERATORS[key]
-        e = c.get("engine", {})
-        if d.transform is not None and e:
-            names = {"enob": "enob", "maskRate": "mask_rate_hz", "detection": "detection", "overlap": "overlap"}
-            over = {names[k]: v for k, v in e.items() if k in names}
-            if "staticW" in e:
-                over["laser_w"] = over["tuning_w"] = e["staticW"] / 2
-            d = replace(d, transform=replace(d.transform, **over))
-        if "fftEff" in c:
-            d = replace(d, fft_efficiency=c["fftEff"])
-        return d
+        return None if key is None else ACCELERATORS[key]
 
-    model = replace(MODELS[c.get("model", "llama3-70b")], prefill_lm_head=c.get("lmHead", "all"))
-    tr = None
-    if "kvCompress" in c:
-        tr = KVTransit(KV_PRESETS[c["kvCompress"]], where=c.get("kvCompressAt", "transit"))
-    return SimConfig(model=model, device=dev(c.get("device", "h100")), devices_per_instance=c.get("devicesPerInstance", 4),
+    return SimConfig(model=MODELS[c.get("model", "llama3-70b")], device=dev(c.get("device", "h100")),
+                     devices_per_instance=c.get("devicesPerInstance", 4),
                      mode=c.get("mode", "disagg"), n_prefill=c.get("nPrefill", 1), n_decode=c.get("nDecode", 1),
                      n_colocated=c.get("nColocated", 2),
                      link=replace(LINKS[c.get("link", "ib-ndr")], channels=c.get("linkChannels", 1)),
@@ -86,7 +71,8 @@ def py_config(c: dict) -> SimConfig:
                      decode_power_cap_w=c.get("decodePowerCap"), dvfs=c.get("dvfs", False),
                      prefill_device=dev(c.get("prefillDevice")), decode_device=dev(c.get("decodeDevice")),
                      prefill_devices_per_instance=c.get("prefillDevicesPerInstance"),
-                     decode_devices_per_instance=c.get("decodeDevicesPerInstance"), kv_transit=tr,
+                     decode_devices_per_instance=c.get("decodeDevicesPerInstance"),
+                     kv_compression=KV_PRESETS[c["kvCompress"]] if "kvCompress" in c else None,
                      fast_forward=c.get("fast", False))
 
 
@@ -110,14 +96,11 @@ PARITY = {
                                           decodeDevice="a100"),
     "8B 2x A100 prefill + H100 decode": dict(model="llama3-8b", devicesPerInstance=1, prefillDevice="a100",
                                              decodeDevice="h100", nPrefill=2),
-    "8B fp8 in transit, 25 GbE": dict(model="llama3-8b", devicesPerInstance=1, link="eth-25g", kvCompress="fp8"),
-    "8B fp4-block at the GPU, 25 GbE": dict(model="llama3-8b", devicesPerInstance=1, link="eth-25g",
-                                            kvCompress="fp4-block", kvCompressAt="endpoint"),
-    "8B co-packaged optics link": dict(model="llama3-8b", devicesPerInstance=1, link="cpo-optical"),
-    "circulant last-token, optical prefill (optimistic)": dict(
-        model="llama3-8b-hyena-circ", lmHead="last", devicesPerInstance=1, prefillDevice="optical-fft",
-        engine=dict(enob=11, maskRate=20000.0, overlap=True)),
-    "Hyena distilled decode, colocated": dict(model="llama3-8b-hyena-dist", devicesPerInstance=1, mode="colocated"),
+    "8B fp8 on the prefill GPU, 25 GbE": dict(model="llama3-8b", devicesPerInstance=1, link="eth-25g",
+                                              kvCompress="fp8"),
+    "8B fp4-block on the prefill GPU, 25 GbE": dict(model="llama3-8b", devicesPerInstance=1, link="eth-25g",
+                                                    kvCompress="fp4-block"),
+    "8B co-packaged optics switch link": dict(model="llama3-8b", devicesPerInstance=1, link="cpo-optical"),
 }
 
 
@@ -131,8 +114,8 @@ def parity() -> list[dict]:
         cases.append({
             "name": name, "cfg": js_config(c), "rows": rows,
             "stamps": [[r.prefill_start, r.first_token, r.kv_start, r.kv_ready, r.decode_start, r.finish] for r in wl],
-            "inst": [[i.compute_j, i.memory_j, i.optical_j, i.busy, i.peak_power] for i in res.instances],
-            "link": [res.link.energy, res.link.transit_j, res.link.bytes, res.link.busy, res.link.wait],
+            "inst": [[i.compute_j, i.memory_j, i.busy, i.peak_power] for i in res.instances],
+            "link": [res.link.energy, res.link.bytes, res.link.handoff_bytes, res.link.busy, res.link.wait],
             "capped": any(i.power_bound_time > 0 for i in res.instances),
             "summary": {"ttft_p99": m["latency_s"]["ttft"]["p99"], "tpot_p99": m["latency_s"]["tpot"]["p99"],
                         "itl_p99": m["latency_s"]["itl"]["p99"], "slo": m["throughput"]["slo_attainment"],
@@ -146,7 +129,7 @@ def ms(x):            # examples/results.py ms()
     return f"{1e3 * x:,.1f} ms" if x < 1 else f"{1e3 * x:,.0f} ms"
 
 
-def ms2(x):           # examples/results.py render_optical ms2()
+def ms2(x):           # examples/results.py ms2() (sections 10, 14, 15)
     return f"{1e3 * x:,.1f} ms" if x < 10 else f"{x:,.1f} s"
 
 
@@ -158,8 +141,6 @@ FMT = {"ms": ms, "ms2": ms2, "pct": pct, "W": lambda x: f"{x:,.0f} W", "f2": lam
        "f3": lambda x: f"{x:.3f}"}
 
 L8 = dict(model="llama3-8b", devicesPerInstance=1, fast=True)
-CIRC = dict(model="llama3-8b-hyena-circ", lmHead="last", devicesPerInstance=1, fast=True)
-OPTIMISTIC = dict(enob=11, maskRate=20000.0, overlap=True)
 
 
 def sweep_rows():
@@ -195,22 +176,11 @@ REFERENCE = [
     ("hetero-2ah", "10", None, "| 2x A100 prefill + H100 decode |", 8,
      {"run": dict(L8, prefillDevice="a100", decodeDevice="h100", nPrefill=2)},
      [("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct"), ("run", "j_tok", "f3")]),
-    ("t11-colocated", "11", "**Transformer (Llama-3-8B)**", "| Colocated x2, H100 |", 8,
-     {"run": dict(L8, mode="colocated")},
-     [("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct"), ("run", "j_tok", "f3")]),
-    ("t11-1p1d", "11", "**Transformer (Llama-3-8B)**", "| 1P1D H100 |", 8, {"run": dict(L8)},
-     [("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct"), ("run", "j_tok", "f3")]),
-    ("circ-gpu", "11", "**Hyena-2 + circulant 256, last-token head**", "| 1P1D H100 |", 8, {"run": dict(CIRC)},
-     [("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct"), ("run", "j_tok", "f3")]),
-    ("circ-optical", "11", "**Hyena-2 + circulant 256, last-token head**",
-     "| optical-fft prefill (optimistic) + H100 decode |", 8,
-     {"run": dict(CIRC, prefillDevice="optical-fft", engine=OPTIMISTIC)},
-     [("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct"), ("run", "j_tok", "f3")]),
-    *[(f"link-{lk}", "14", "**GQA KV cache**", f"| {lk} |", 8, {"run": dict(L8, link=lk)},
+    *[(f"link-{lk}", "14", "| Link | KV wait + transfer share", f"| {lk} |", 8, {"run": dict(L8, link=lk)},
        [("run", "kv_share", "pct"), ("run", "link_util", "pct"), ("run", "ttft_p99", "ms2"), ("run", "tpot_p99", "ms"),
         ("run", "slo", "pct")])
       for lk in ["nvlink4", "ib-ndr", "cpo-optical", "eth-100g", "eth-25g"]],
-    ("ib-fp8", "15", "**GQA KV cache**", "| ib-ndr | fp8 |", 8,
+    ("ib-fp8", "15", None, "| ib-ndr | fp8 |", 8,
      {"run": dict(L8, kvCompress="fp8")},
      [("run", "handoff_p99", "ms2"), ("run", "tpot_p99", "ms"), ("run", "slo", "pct")]),
     *[(f"eth25-{r}-{pr}", "15", "**Load sweep: GQA KV over 25 GbE**", f"| {r} req/s | {pr} |", r,
@@ -227,7 +197,7 @@ QUOTES = [
     ("capacity", "8", None, "* Prefill 7.49 req/s"),
     ("2p1d", "4", None, "* 2P1D, rates"),
     ("proportionality-0.5", "6", None, "| 0.5 req/s |"),
-    ("handoff-bytes", "14", None, "Photonic interconnect is *not* Fourier optics"),
+    ("handoff-bytes", "14", None, "`cpo-optical` is an illustrative co-packaged-optics switch link"),
     ("eth25-saturation", "15", None, "**Load sweep: GQA KV over 25 GbE**"),
 ]
 
